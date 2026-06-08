@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WRS Containers — Fab & Rebuild Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --steel:#1c2128; --steel2:#262d36; --line:#d7dce3; --line2:#e8ebf0;
+  --board:#eef1f4; --card:#ffffff; --ink:#1c2128; --muted:#67707c;
+  --amber:#f5a623; --amber-d:#b9760a;
+  --st-pick-b:#fef3c7;--st-pick-t:#b45309;
+  --st-new-b:#dbeafe;--st-new-t:#1d4ed8;
+  --st-prog-b:#ede9fe;--st-prog-t:#6d28d9;
+  --st-comp-b:#dcfce7;--st-comp-t:#15803d;
+  --st-ready-b:#cffafe;--st-ready-t:#0e7490;
+  --lt-front-b:#e0f2fe;--lt-front-t:#0369a1;
+  --lt-rear-b:#ffedd5;--lt-rear-t:#9a3412;
+  --shadow:0 1px 2px rgba(16,22,30,.06),0 4px 14px rgba(16,22,30,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:'Barlow',system-ui,sans-serif;color:var(--ink);background:var(--board);
+  background-image:linear-gradient(rgba(28,33,40,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(28,33,40,.025) 1px,transparent 1px);
+  background-size:26px 26px;
+}
+/* ---------- Header ---------- */
+header{
+  background:var(--steel);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:16px;
+  border-bottom:3px solid var(--amber);position:sticky;top:0;z-index:40;
+}
+.logo{display:flex;align-items:center;gap:12px}
+.logo .mark{
+  width:38px;height:38px;border-radius:7px;background:var(--amber);color:#1c2128;
+  display:grid;place-items:center;font-family:'Oswald';font-weight:700;font-size:20px;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.18);
+}
+.logo h1{font-family:'Oswald';font-weight:600;font-size:20px;letter-spacing:.5px;margin:0;text-transform:uppercase}
+.logo small{display:block;font-size:11px;color:#9aa4b1;letter-spacing:2px;font-weight:500;text-transform:uppercase}
+header .spacer{flex:1}
+.hbtn{
+  font-family:'Oswald';text-transform:uppercase;letter-spacing:.6px;font-weight:600;font-size:13px;
+  border:0;cursor:pointer;padding:10px 16px;border-radius:7px;color:#1c2128;background:var(--amber);
+  display:inline-flex;align-items:center;gap:7px;transition:.15s;
+}
+.hbtn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.hbtn.ghost{background:transparent;color:#cfd6df;border:1px solid #3a434e}
+.hbtn.ghost:hover{background:#2b323b;color:#fff}
+/* ---------- Toolbar ---------- */
+.toolbar{
+  display:flex;align-items:center;gap:12px;padding:14px 22px;flex-wrap:wrap;
+}
+.search{
+  flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--line);border-radius:9px;padding:9px 13px;box-shadow:var(--shadow);
+}
+.search input{border:0;outline:0;font-family:'Barlow';font-size:15px;width:100%;background:transparent;color:var(--ink)}
+.search svg{flex:none;opacity:.5}
+.filter{
+  display:flex;background:var(--card);border:1px solid var(--line);border-radius:9px;overflow:hidden;box-shadow:var(--shadow)
+}
+.filter button{
+  border:0;background:transparent;font-family:'Oswald';font-weight:500;letter-spacing:.3px;font-size:12.5px;
+  text-transform:uppercase;padding:9px 13px;cursor:pointer;color:var(--muted);border-right:1px solid var(--line2)
+}
+.filter button:last-child{border-right:0}
+.filter button.active{background:var(--steel);color:#fff}
+.count{font-family:'Oswald';font-weight:500;color:var(--muted);font-size:13px;letter-spacing:.5px;text-transform:uppercase}
+/* ---------- Board / Table ---------- */
+.wrap{padding:0 22px 60px}
+.tablecard{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:1180px}
+thead th{
+  background:var(--steel2);color:#cfd6df;font-family:'Oswald';font-weight:500;font-size:11.5px;
+  letter-spacing:1px;text-transform:uppercase;text-align:left;padding:12px 13px;white-space:nowrap;
+  position:sticky;top:0;border-bottom:2px solid var(--amber)
+}
+tbody td{padding:11px 13px;border-bottom:1px solid var(--line2);vertical-align:top;font-size:14px}
+tbody tr:hover{background:#f7f9fb}
+tbody tr.flash{animation:flash 2.4s ease}
+@keyframes flash{0%,40%{background:#fff7df}100%{background:transparent}}
+.tkt{font-family:'Oswald';font-weight:600;font-size:15px;letter-spacing:.5px}
+.tkt .uid{display:block;font-family:'Barlow';font-weight:400;font-size:11px;color:var(--muted);letter-spacing:0}
+/* site cell */
+.site .nm{font-weight:600}
+.site .ad{color:var(--muted);font-size:12.5px;line-height:1.35;margin-top:2px}
+.site .ph{font-size:12.5px;margin-top:2px}
+.site .ph a{color:var(--st-new-t);text-decoration:none}
+/* pills */
+.pill{
+  display:inline-flex;align-items:center;gap:6px;font-family:'Oswald';font-weight:600;letter-spacing:.4px;
+  text-transform:uppercase;font-size:11.5px;padding:6px 11px;border-radius:999px;cursor:pointer;border:1px solid transparent;
+  user-select:none;white-space:nowrap;transition:.12s
+}
+.pill:hover{filter:brightness(.97);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.pill .car{font-size:9px;opacity:.6}
+.p-pick{background:var(--st-pick-b);color:var(--st-pick-t)}
+.p-new{background:var(--st-new-b);color:var(--st-new-t)}
+.p-prog{background:var(--st-prog-b);color:var(--st-prog-t)}
+.p-comp{background:var(--st-comp-b);color:var(--st-comp-t)}
+.p-ready{background:var(--st-ready-b);color:var(--st-ready-t)}
+.p-front{background:var(--lt-front-b);color:var(--lt-front-t)}
+.p-rear{background:var(--lt-rear-b);color:var(--lt-rear-t)}
+/* selects */
+select.cell{
+  font-family:'Barlow';font-size:13.5px;font-weight:500;padding:6px 8px;border:1px solid var(--line);
+  border-radius:7px;background:#fbfcfd;color:var(--ink);cursor:pointer;max-width:150px
+}
+select.cell:focus{outline:2px solid var(--amber);border-color:var(--amber)}
+.cat-new{color:var(--st-comp-t);font-weight:600}
+.cat-rebuilt{color:var(--st-prog-t);font-weight:600}
+/* notes */
+.notes-cell{min-width:200px;max-width:260px}
+.notes-cell textarea{
+  width:100%;min-height:46px;resize:vertical;font-family:'Barlow';font-size:13px;color:var(--ink);
+  border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:#fbfcfd
+}
+.notes-cell textarea:focus{outline:2px solid var(--amber);border-color:var(--amber)}
+.notes-act{display:flex;gap:6px;margin-top:6px}
+.icobtn{
+  border:1px solid var(--line);background:#fff;border-radius:7px;width:34px;height:30px;display:grid;place-items:center;
+  cursor:pointer;color:var(--muted);transition:.12s
+}
+.icobtn:hover{background:var(--steel);color:#fff;border-color:var(--steel)}
+.icobtn.danger:hover{background:#dc2626;border-color:#dc2626}
+/* row actions */
+.rowact{display:flex;gap:6px}
+/* popover */
+.pop{
+  position:fixed;z-index:80;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(16,22,30,.18);
+  padding:6px;min-width:170px
+}
+.pop button{
+  display:flex;align-items:center;gap:9px;width:100%;border:0;background:transparent;font-family:'Barlow';
+  font-size:14px;font-weight:500;padding:9px 10px;border-radius:7px;cursor:pointer;text-align:left;color:var(--ink)
+}
+.pop button:hover{background:var(--line2)}
+.pop .dot{width:11px;height:11px;border-radius:50%;flex:none}
+/* empty */
+.empty{padding:60px 20px;text-align:center;color:var(--muted)}
+.empty .big{font-family:'Oswald';font-size:22px;color:var(--ink);margin-bottom:6px;letter-spacing:.5px}
+/* ---------- Modal ---------- */
+.overlay{position:fixed;inset:0;background:rgba(16,22,30,.55);backdrop-filter:blur(3px);z-index:90;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+.overlay.open{display:flex}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:560px;box-shadow:0 24px 60px rgba(0,0,0,.4);overflow:hidden;animation:rise .2s ease}
+@keyframes rise{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
+.modal h2{font-family:'Oswald';text-transform:uppercase;letter-spacing:.5px;background:var(--steel);color:#fff;margin:0;padding:16px 20px;font-size:18px;border-bottom:3px solid var(--amber);display:flex;align-items:center;justify-content:space-between}
+.modal h2 .x{cursor:pointer;color:#9aa4b1;font-size:22px;line-height:1}
+.modal h2 .x:hover{color:#fff}
+.mbody{padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.full{grid-column:1/-1}
+.field label{font-family:'Oswald';font-weight:500;font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+.field input,.field select,.field textarea{
+  font-family:'Barlow';font-size:15px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fbfcfd;color:var(--ink)
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--amber);border-color:var(--amber)}
+.mfoot{padding:14px 20px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line2);background:#f7f9fb}
+.btn{font-family:'Oswald';text-transform:uppercase;letter-spacing:.6px;font-weight:600;font-size:13px;border:0;cursor:pointer;padding:11px 20px;border-radius:8px}
+.btn.primary{background:var(--amber);color:#1c2128}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.sec{background:#fff;border:1px solid var(--line);color:var(--muted)}
+.btn.sec:hover{background:var(--line2)}
+/* ---------- QR modal ---------- */
+#qrModal .modal{max-width:380px}
+.qrbox{padding:24px;text-align:center}
+.qrbox .qr{display:inline-block;padding:14px;background:#fff;border:2px solid var(--steel);border-radius:10px}
+.qrbox .qt{font-family:'Oswald';font-weight:700;font-size:22px;letter-spacing:1px;margin-top:14px}
+.qrbox .qsub{color:var(--muted);font-size:13px;margin-top:2px}
+/* ---------- Print ---------- */
+.print-root{display:none}
+@media print{
+  body *{visibility:hidden}
+  .print-root,.print-root *{visibility:visible}
+  .print-root{display:block;position:absolute;inset:0;padding:0;background:#fff}
+  .labels{display:flex;flex-wrap:wrap;gap:0}
+  .label{
+    width:2.5in;height:2.5in;border:1px dashed #999;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;padding:8px;page-break-inside:avoid;box-sizing:border-box
+  }
+  .label .lqr{margin-bottom:6px}
+  .label .lt{font-family:'Oswald';font-weight:700;font-size:18px;letter-spacing:1px;text-align:center}
+  .label .ls{font-size:10px;color:#333;text-align:center;line-height:1.25;margin-top:2px}
+}
+@media(max-width:640px){.mbody{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="mark">W</div>
+    <div><h1>Containers</h1><small>Fab &amp; Rebuild Tracker</small></div>
+  </div>
+  <div class="spacer"></div>
+  <button class="hbtn ghost" onclick="fetchRemote(true)" title="Reload from the Google Sheet">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
+    Refresh
+  </button>
+  <button class="hbtn ghost" onclick="printAll()" title="Print every QR label as a sheet">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+    Print QR
+  </button>
+  <button class="hbtn" onclick="openNew()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+    New Order
+  </button>
+</header>
+
+<div class="toolbar">
+  <div class="search">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input id="search" placeholder="Search ticket, site, address, container…" oninput="render()">
+  </div>
+  <div class="filter" id="statusFilter">
+    <button class="active" data-f="all">All</button>
+    <button data-f="Pick Up">Pick Up</button>
+    <button data-f="New">New</button>
+    <button data-f="In-Progress">In-Prog</button>
+    <button data-f="Completed">Done</button>
+    <button data-f="Ready for Delivery">Ready</button>
+  </div>
+  <span class="count" id="count"></span>
+  <span class="count" id="sync" title="Cloud sync status"></span>
+</div>
+
+<div class="wrap">
+  <div class="tablecard">
+    <div class="scroll">
+      <table>
+        <thead><tr>
+          <th>Ticket ID</th><th>Status</th><th>Location</th><th>Build</th>
+          <th>Load</th><th>Container</th><th>Lids</th><th>Notes</th><th>QR</th><th></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty" style="display:none">
+      <div class="big">No containers yet</div>
+      <div>Click <strong>New Order</strong> to start tracking a fab or rebuild.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit modal -->
+<div class="overlay" id="formModal">
+  <div class="modal">
+    <h2><span id="formTitle">New Order</span><span class="x" onclick="closeForm()">&times;</span></h2>
+    <div class="mbody">
+      <div class="field"><label>Ticket ID</label><input id="f_ticket" placeholder="e.g. C-1042"></div>
+      <div class="field"><label>Status</label>
+        <select id="f_status">
+          <option>Pick Up</option><option selected>New</option><option>In-Progress</option><option>Completed</option><option>Ready for Delivery</option>
+        </select></div>
+      <div class="field full"><label>Site Name</label><input id="f_site" placeholder="Site / customer name"></div>
+      <div class="field full"><label>Address</label><input id="f_addr" placeholder="Street, City, ST ZIP"></div>
+      <div class="field"><label>Phone</label><input id="f_phone" placeholder="(000) 000-0000"></div>
+      <div class="field"><label>Build Type</label>
+        <select id="f_cat"><option>New Container</option><option>Rebuilt Container</option></select></div>
+      <div class="field"><label>Load Type</label>
+        <select id="f_load"><option>Front Load</option><option>Rear Load</option></select></div>
+      <div class="field"><label>Container Type</label><select id="f_type"></select></div>
+      <div class="field"><label>Lids</label>
+        <select id="f_lids"><option>None</option><option>Plastic</option><option>Steel</option></select></div>
+      <div class="field full"><label>Notes</label><textarea id="f_notes" rows="3" placeholder="Build notes, paint, gauge, etc."></textarea></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn sec" onclick="closeForm()">Cancel</button>
+      <button class="btn primary" onclick="saveForm()">Save Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR modal -->
+<div class="overlay" id="qrModal">
+  <div class="modal">
+    <h2><span>Ticket QR</span><span class="x" onclick="closeQR()">&times;</span></h2>
+    <div class="qrbox">
+      <div class="qr" id="qrTarget"></div>
+      <div class="qt" id="qrTicket"></div>
+      <div class="qsub" id="qrSub"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn sec" onclick="closeQR()">Close</button>
+      <button class="btn primary" onclick="printOne()">Print Label</button>
+    </div>
+  </div>
+</div>
+
+<div class="print-root" id="printRoot"><div class="labels" id="printLabels"></div></div>
+
+<script>
+/* ============================================================
+   CONFIG
+   ------------------------------------------------------------
+   API_URL  : paste your Apps Script Web App /exec URL here so the
+              whole team reads/writes the same Google Sheet. Leave
+              "" to run local-only on this device.
+   EMAIL_TO : notes email recipient. The email button opens each
+              user's OWN mail app (sends from their own address).
+   BASE_URL : URL the QR codes point to. Defaults to wherever this
+              page is hosted, so scanning opens THIS app on that
+              ticket. Set a custom domain if you like.
+   ============================================================ */
+const CONFIG = {
+  API_URL: "https://script.google.com/macros/s/AKfycbwTvuTkPZvaCooQf9mEIg2yilEWvBkAJM08wQ67-OeIJ6jZeHVG24v_UumgWMYXxTZpsw/exec",
+  EMAIL_TO: "don@gtsupplies.com",
+  BASE_URL: location.origin + location.pathname
+};
+
+/* ---------- option sets ---------- */
+const SIZES = ["1","1.5","2","3","4","6","8"];
+const CONTAINER_TYPES = SIZES.flatMap(s=>[`${s} Yard`,`${s} Yard Slant`]);
+const STATUS = {
+  "Pick Up":{c:"p-pick",dot:"#b45309"},
+  "New":{c:"p-new",dot:"#1d4ed8"},
+  "In-Progress":{c:"p-prog",dot:"#6d28d9"},
+  "Completed":{c:"p-comp",dot:"#15803d"},
+  "Ready for Delivery":{c:"p-ready",dot:"#0e7490"}
+};
+const LOAD = {"Front Load":{c:"p-front",dot:"#0369a1"},"Rear Load":{c:"p-rear",dot:"#9a3412"}};
+
+/* ---------- store (graceful localStorage) ---------- */
+const KEY="wrs_containers_v1";
+let orders=[];
+function load(){ try{orders=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){orders=[]} }
+function persist(){ try{localStorage.setItem(KEY,JSON.stringify(orders))}catch(e){} }
+function uid(){return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+
+/* ---------- populate selects ---------- */
+const ftype=document.getElementById('f_type');
+CONTAINER_TYPES.forEach(t=>{const o=document.createElement('option');o.textContent=t;ftype.appendChild(o)});
+
+/* ---------- state ---------- */
+let curFilter="all", editingId=null, qrId=null;
+document.querySelectorAll('#statusFilter button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#statusFilter button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); curFilter=b.dataset.f; render();
+});
+
+/* ---------- render ---------- */
+function render(){
+  const q=document.getElementById('search').value.trim().toLowerCase();
+  const tb=document.getElementById('rows'); tb.innerHTML='';
+  let list=orders.slice().reverse();
+  if(curFilter!=='all') list=list.filter(o=>o.status===curFilter);
+  if(q) list=list.filter(o=>[o.ticketId,o.siteName,o.address,o.containerType,o.notes].join(' ').toLowerCase().includes(q));
+
+  document.getElementById('count').textContent = list.length+' '+(list.length===1?'order':'orders');
+  document.getElementById('empty').style.display = orders.length? 'none':'block';
+
+  list.forEach(o=>{
+    const tr=document.createElement('tr'); tr.id='row-'+o.id;
+    const st=STATUS[o.status]||STATUS["New"];
+    const lt=LOAD[o.loadType]||LOAD["Front Load"];
+    tr.innerHTML=`
+      <td><span class="tkt">${esc(o.ticketId)||'—'}<span class="uid">${o.id}</span></span></td>
+      <td><span class="pill ${st.c}" onclick="openPop(event,'${o.id}','status')">${esc(o.status)}<span class="car">▼</span></span></td>
+      <td class="site">
+        <div class="nm">${esc(o.siteName)||'—'}</div>
+        ${o.address?`<div class="ad">${esc(o.address)}</div>`:''}
+        ${o.phone?`<div class="ph"><a href="tel:${esc(o.phone)}">${esc(o.phone)}</a></div>`:''}
+      </td>
+      <td><select class="cell ${o.category==='New Container'?'cat-new':'cat-rebuilt'}" onchange="upd('${o.id}','category',this.value)">
+        ${opt(['New Container','Rebuilt Container'],o.category)}</select></td>
+      <td><span class="pill ${lt.c}" onclick="openPop(event,'${o.id}','loadType')">${esc(o.loadType)}<span class="car">▼</span></span></td>
+      <td><select class="cell" onchange="upd('${o.id}','containerType',this.value)">${opt(CONTAINER_TYPES,o.containerType)}</select></td>
+      <td><select class="cell" onchange="upd('${o.id}','lids',this.value)">${opt(['None','Plastic','Steel'],o.lids)}</select></td>
+      <td class="notes-cell">
+        <textarea onchange="upd('${o.id}','notes',this.value)" placeholder="Notes…">${esc(o.notes)}</textarea>
+        <div class="notes-act">
+          <button class="icobtn" title="Email notes to ${CONFIG.EMAIL_TO} (opens your mail app)" onclick="emailNotes('${o.id}')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+          </button>
+        </div>
+      </td>
+      <td><button class="icobtn" title="Show / print QR" onclick="openQR('${o.id}')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7M17 21h.01"/></svg>
+      </button></td>
+      <td><div class="rowact">
+        <button class="icobtn" title="Edit" onclick="openEdit('${o.id}')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+        <button class="icobtn danger" title="Delete" onclick="del('${o.id}')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+        </button>
+      </div></td>`;
+    tb.appendChild(tr);
+  });
+}
+function opt(arr,v){return arr.map(a=>`<option ${a===v?'selected':''}>${a}</option>`).join('')}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* ---------- inline updates ---------- */
+function upd(id,field,val){const o=orders.find(x=>x.id===id);if(!o)return;o[field]=val;persist();
+  if(field==='category'||field==='status'||field==='loadType')render();
+  pushUpsert(o);}
+
+/* ---------- pill popover ---------- */
+let pop=null;
+function openPop(e,id,field){
+  e.stopPropagation(); closePop();
+  const map=field==='status'?STATUS:LOAD;
+  pop=document.createElement('div'); pop.className='pop';
+  Object.keys(map).forEach(k=>{
+    const b=document.createElement('button');
+    b.innerHTML=`<span class="dot" style="background:${map[k].dot}"></span>${k}`;
+    b.onclick=()=>{upd(id,field,k);closePop()};
+    pop.appendChild(b);
+  });
+  document.body.appendChild(pop);
+  const r=e.currentTarget.getBoundingClientRect();
+  pop.style.top=(r.bottom+6)+'px';
+  pop.style.left=Math.min(r.left,innerWidth-pop.offsetWidth-12)+'px';
+}
+function closePop(){if(pop){pop.remove();pop=null}}
+document.addEventListener('click',closePop);
+
+/* ---------- add / edit modal ---------- */
+function openNew(){editingId=null;document.getElementById('formTitle').textContent='New Order';
+  ['f_ticket','f_site','f_addr','f_phone','f_notes'].forEach(i=>document.getElementById(i).value='');
+  f('f_status','New');f('f_cat','New Container');f('f_load','Front Load');f('f_type','2 Yard');f('f_lids','None');
+  show('formModal');document.getElementById('f_ticket').focus();}
+function openEdit(id){const o=orders.find(x=>x.id===id);if(!o)return;editingId=id;
+  document.getElementById('formTitle').textContent='Edit Order';
+  f('f_ticket',o.ticketId);f('f_status',o.status);f('f_site',o.siteName);f('f_addr',o.address);
+  f('f_phone',o.phone);f('f_cat',o.category);f('f_load',o.loadType);f('f_type',o.containerType);
+  f('f_lids',o.lids);f('f_notes',o.notes);show('formModal');}
+function f(id,v){document.getElementById(id).value=v}
+function val(id){return document.getElementById(id).value.trim()}
+function saveForm(){
+  const data={ticketId:val('f_ticket'),status:val('f_status'),siteName:val('f_site'),address:val('f_addr'),
+    phone:val('f_phone'),category:val('f_cat'),loadType:val('f_load'),containerType:val('f_type'),
+    lids:val('f_lids'),notes:val('f_notes')};
+  if(!data.ticketId){alert('Ticket ID is required.');return}
+  let saved;
+  if(editingId){saved=orders.find(x=>x.id===editingId);Object.assign(saved,data)}
+  else{saved={id:uid(),createdAt:Date.now(),...data};orders.push(saved)}
+  persist();closeForm();render();
+  pushUpsert(saved);
+}
+function del(id){if(!confirm('Delete this order?'))return;orders=orders.filter(x=>x.id!==id);persist();render();pushDelete(id);}
+function closeForm(){hide('formModal')}
+function show(id){document.getElementById(id).classList.add('open')}
+function hide(id){document.getElementById(id).classList.remove('open')}
+
+/* ---------- QR ---------- */
+function qrUrl(o){return CONFIG.BASE_URL+'?ticket='+encodeURIComponent(o.ticketId)}
+function openQR(id){const o=orders.find(x=>x.id===id);if(!o)return;qrId=id;
+  const t=document.getElementById('qrTarget');t.innerHTML='';
+  new QRCode(t,{text:qrUrl(o),width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
+  document.getElementById('qrTicket').textContent=o.ticketId||'—';
+  document.getElementById('qrSub').textContent=[o.containerType,o.siteName].filter(Boolean).join(' • ');
+  show('qrModal');}
+function closeQR(){hide('qrModal')}
+function makeLabel(o){
+  const wrap=document.createElement('div');wrap.className='label';
+  const qd=document.createElement('div');qd.className='lqr';
+  new QRCode(qd,{text:qrUrl(o),width:130,height:130,correctLevel:QRCode.CorrectLevel.M});
+  const t=document.createElement('div');t.className='lt';t.textContent=o.ticketId||'—';
+  const s=document.createElement('div');s.className='ls';
+  s.textContent=[o.containerType,o.category,o.siteName].filter(Boolean).join(' • ');
+  wrap.append(qd,t,s);return wrap;
+}
+function printOne(){const o=orders.find(x=>x.id===qrId);if(!o)return;
+  const box=document.getElementById('printLabels');box.innerHTML='';box.appendChild(makeLabel(o));
+  setTimeout(()=>window.print(),250);}
+function printAll(){if(!orders.length){alert('No orders to print.');return}
+  const box=document.getElementById('printLabels');box.innerHTML='';
+  orders.forEach(o=>box.appendChild(makeLabel(o)));setTimeout(()=>window.print(),350);}
+
+/* ---------- email notes (opens the current user's own mail app) ---------- */
+function emailNotes(id){
+  const o=orders.find(x=>x.id===id);if(!o)return;
+  if(!o.notes||!o.notes.trim()){alert('No notes to send for this ticket.');return}
+  const subject=`Container ${o.ticketId||''} — ${o.containerType||''} (${o.category||''})`.trim();
+  const body=`Ticket: ${o.ticketId||'—'}\nStatus: ${o.status}\nSite: ${o.siteName||'—'}\nAddress: ${o.address||'—'}\n`
+    +`Phone: ${o.phone||'—'}\nBuild: ${o.category} / ${o.loadType} / ${o.containerType} / Lids: ${o.lids}\n\nNotes:\n${o.notes}`;
+  location.href=`mailto:${CONFIG.EMAIL_TO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+/* ---------- cloud sync (shared Google Sheet via Apps Script) ---------- */
+function setSync(s){
+  const el=document.getElementById('sync');if(!el)return;
+  if(!CONFIG.API_URL){el.textContent='● local only';el.style.color='#67707c';return;}
+  const m={ok:['● synced','#15803d'],saving:['● saving…','#b45309'],offline:['● offline — retrying','#dc2626']};
+  const v=m[s]||m.ok;el.textContent=v[0];el.style.color=v[1];
+}
+function pushUpsert(o){
+  if(!CONFIG.API_URL)return;setSync('saving');
+  fetch(CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({action:'upsert',order:o})})
+    .then(r=>r.json()).then(()=>setSync('ok')).catch(()=>setSync('offline'));
+}
+function pushDelete(id){
+  if(!CONFIG.API_URL)return;setSync('saving');
+  fetch(CONFIG.API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({action:'delete',id})})
+    .then(r=>r.json()).then(()=>setSync('ok')).catch(()=>setSync('offline'));
+}
+function normalize(o){return{
+  id:o.id||uid(),ticketId:o.ticketId||'',status:o.status||'New',siteName:o.siteName||'',
+  address:o.address||'',phone:o.phone||'',category:o.category||'New Container',
+  loadType:o.loadType||'Front Load',containerType:o.containerType||'2 Yard',
+  lids:o.lids||'None',notes:o.notes||'',createdAt:o.createdAt||Date.now()};}
+function isEditingNow(){
+  if(document.getElementById('formModal').classList.contains('open'))return true;
+  if(document.getElementById('qrModal').classList.contains('open'))return true;
+  const ae=document.activeElement;return !!ae&&['TEXTAREA','SELECT'].includes(ae.tagName);
+}
+async function fetchRemote(force){
+  if(!CONFIG.API_URL)return;
+  try{
+    const r=await fetch(CONFIG.API_URL,{method:'GET'});
+    const d=await r.json();
+    if(d&&d.ok&&Array.isArray(d.orders)){
+      orders=d.orders.map(normalize);persist();
+      if(force||!isEditingNow())render();
+      setSync('ok');
+    }
+  }catch(e){setSync('offline');}
+}
+function startAutoRefresh(){setInterval(()=>{if(!isEditingNow())fetchRemote();},30000);}
+
+/* ---------- deep link (QR scan locates ticket) ---------- */
+function handleDeepLink(){
+  const t=new URLSearchParams(location.search).get('ticket');
+  if(!t)return;
+  document.getElementById('search').value=t;render();
+  const o=orders.find(x=>(x.ticketId||'').toLowerCase()===t.toLowerCase());
+  if(o){const row=document.getElementById('row-'+o.id);
+    if(row){row.classList.add('flash');row.scrollIntoView({behavior:'smooth',block:'center'})}}
+}
+
+/* ---------- init ---------- */
+load();render();
+if(CONFIG.API_URL){setSync('ok');fetchRemote(true).then(handleDeepLink);startAutoRefresh();}
+else{setSync();handleDeepLink();}
+</script>
+</body>
+</html>
