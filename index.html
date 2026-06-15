@@ -115,6 +115,8 @@ select.cell{
 select.cell:focus{outline:2px solid var(--amber);border-color:var(--amber)}
 .cat-new{color:var(--st-comp-t);font-weight:600}
 .cat-rebuilt{color:var(--st-prog-t);font-weight:600}
+input.qtyin{width:54px;text-align:center;font-family:'Barlow';font-size:14px;font-weight:600;padding:6px 6px;border:1px solid var(--line);border-radius:7px;background:#fbfcfd;color:var(--ink)}
+input.qtyin:focus{outline:2px solid var(--amber);border-color:var(--amber)}
 /* notes */
 .notes-cell{min-width:200px;max-width:260px}
 .notes-cell textarea{
@@ -235,7 +237,7 @@ select.cell:focus{outline:2px solid var(--amber);border-color:var(--amber)}
       <table>
         <thead><tr>
           <th>Ticket ID</th><th>Status</th><th>Location</th><th>Build</th>
-          <th>Load</th><th>Container</th><th>Lids</th><th>Notes</th><th>QR</th><th></th>
+          <th>Load</th><th>Container</th><th>Qty</th><th>Lids</th><th>Notes</th><th>QR</th><th></th>
         </tr></thead>
         <tbody id="rows"></tbody>
       </table>
@@ -267,6 +269,7 @@ select.cell:focus{outline:2px solid var(--amber);border-color:var(--amber)}
       <div class="field"><label>Container Type</label><select id="f_type"></select></div>
       <div class="field"><label>Lids</label>
         <select id="f_lids"><option>None</option><option>Plastic</option><option>Steel</option></select></div>
+      <div class="field"><label>Quantity</label><input id="f_qty" type="number" min="1" max="10" value="1"></div>
       <div class="field full"><label>Notes</label><textarea id="f_notes" rows="3" placeholder="Build notes, paint, gauge, etc."></textarea></div>
     </div>
     <div class="mfoot">
@@ -314,8 +317,12 @@ const CONFIG = {
 };
 
 /* ---------- option sets ---------- */
-const SIZES = ["1","1.5","2","3","4","6","8"];
-const CONTAINER_TYPES = SIZES.flatMap(s=>[`${s} Yard`,`${s} Yard Slant`]);
+const SIZES = ["1","1.5","2","2.33","2.34","3","4","6","8"];
+const CONTAINER_TYPES = [];
+SIZES.forEach(s=>{
+  CONTAINER_TYPES.push(`${s} Yard`,`${s} Yard Slant`);
+  if(s==="2") CONTAINER_TYPES.push("2 Yard Compactor Style");
+});
 const STATUS = {
   "Pick Up":{c:"p-pick",dot:"#b45309"},
   "New":{c:"p-new",dot:"#1d4ed8"},
@@ -370,6 +377,7 @@ function render(){
         ${opt(['New Container','Rebuilt Container'],o.category)}</select></td>
       <td><span class="pill ${lt.c}" onclick="openPop(event,'${o.id}','loadType')">${esc(o.loadType)}<span class="car">▼</span></span></td>
       <td><select class="cell" onchange="upd('${o.id}','containerType',this.value)">${opt(CONTAINER_TYPES,o.containerType)}</select></td>
+      <td><input class="qtyin" type="number" min="1" max="10" value="${o.qty||1}" onchange="updQty('${o.id}',this)"></td>
       <td><select class="cell" onchange="upd('${o.id}','lids',this.value)">${opt(['None','Plastic','Steel'],o.lids)}</select></td>
       <td class="notes-cell">
         <textarea onchange="upd('${o.id}','notes',this.value)" placeholder="Notes…">${esc(o.notes)}</textarea>
@@ -400,6 +408,8 @@ function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 function upd(id,field,val){const o=orders.find(x=>x.id===id);if(!o)return;o[field]=val;persist();
   if(field==='category'||field==='status'||field==='loadType')render();
   pushUpsert(o);}
+function clampQty(v){v=parseInt(v,10);if(isNaN(v)||v<1)return 1;return v>10?10:v;}
+function updQty(id,el){const v=clampQty(el.value);el.value=v;upd(id,'qty',v);}
 
 /* ---------- pill popover ---------- */
 let pop=null;
@@ -424,19 +434,19 @@ document.addEventListener('click',closePop);
 /* ---------- add / edit modal ---------- */
 function openNew(){editingId=null;document.getElementById('formTitle').textContent='New Order';
   ['f_ticket','f_site','f_addr','f_phone','f_notes'].forEach(i=>document.getElementById(i).value='');
-  f('f_status','New');f('f_cat','New Container');f('f_load','Front Load');f('f_type','2 Yard');f('f_lids','None');
+  f('f_status','New');f('f_cat','New Container');f('f_load','Front Load');f('f_type','2 Yard');f('f_lids','None');f('f_qty',1);
   show('formModal');document.getElementById('f_ticket').focus();}
 function openEdit(id){const o=orders.find(x=>x.id===id);if(!o)return;editingId=id;
   document.getElementById('formTitle').textContent='Edit Order';
   f('f_ticket',o.ticketId);f('f_status',o.status);f('f_site',o.siteName);f('f_addr',o.address);
   f('f_phone',o.phone);f('f_cat',o.category);f('f_load',o.loadType);f('f_type',o.containerType);
-  f('f_lids',o.lids);f('f_notes',o.notes);show('formModal');}
+  f('f_lids',o.lids);f('f_qty',o.qty||1);f('f_notes',o.notes);show('formModal');}
 function f(id,v){document.getElementById(id).value=v}
 function val(id){return document.getElementById(id).value.trim()}
 function saveForm(){
   const data={ticketId:val('f_ticket'),status:val('f_status'),siteName:val('f_site'),address:val('f_addr'),
     phone:val('f_phone'),category:val('f_cat'),loadType:val('f_load'),containerType:val('f_type'),
-    lids:val('f_lids'),notes:val('f_notes')};
+    lids:val('f_lids'),qty:clampQty(val('f_qty')),notes:val('f_notes')};
   if(!data.ticketId){alert('Ticket ID is required.');return}
   let saved;
   if(editingId){saved=orders.find(x=>x.id===editingId);Object.assign(saved,data)}
@@ -480,7 +490,7 @@ function emailNotes(id){
   if(!o.notes||!o.notes.trim()){alert('No notes to send for this ticket.');return}
   const subject=`Container ${o.ticketId||''} — ${o.containerType||''} (${o.category||''})`.trim();
   const body=`Ticket: ${o.ticketId||'—'}\nStatus: ${o.status}\nSite: ${o.siteName||'—'}\nAddress: ${o.address||'—'}\n`
-    +`Phone: ${o.phone||'—'}\nBuild: ${o.category} / ${o.loadType} / ${o.containerType} / Lids: ${o.lids}\n\nNotes:\n${o.notes}`;
+    +`Phone: ${o.phone||'—'}\nQty: ${o.qty||1}\nBuild: ${o.category} / ${o.loadType} / ${o.containerType} / Lids: ${o.lids}\n\nNotes:\n${o.notes}`;
   location.href=`mailto:${CONFIG.EMAIL_TO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -507,7 +517,7 @@ function normalize(o){return{
   id:o.id||uid(),ticketId:o.ticketId||'',status:o.status||'New',siteName:o.siteName||'',
   address:o.address||'',phone:o.phone||'',category:o.category||'New Container',
   loadType:o.loadType||'Front Load',containerType:o.containerType||'2 Yard',
-  lids:o.lids||'None',notes:o.notes||'',createdAt:o.createdAt||Date.now()};}
+  lids:o.lids||'None',qty:clampQty(o.qty),notes:o.notes||'',createdAt:o.createdAt||Date.now()};}
 function isEditingNow(){
   if(document.getElementById('formModal').classList.contains('open'))return true;
   if(document.getElementById('qrModal').classList.contains('open'))return true;
