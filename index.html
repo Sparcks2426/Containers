@@ -31,7 +31,7 @@ body{
 }
 /* ---------- Header ---------- */
 header{
-  background:var(--steel);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:16px;
+  background:linear-gradient(108deg,#171c23 0%,#212b39 55%,#2b2533 100%);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:16px;
   border-bottom:3px solid var(--amber);position:sticky;top:0;z-index:40;
 }
 .logo{display:flex;align-items:center;gap:12px}
@@ -67,7 +67,7 @@ header .spacer{flex:1}
   text-transform:uppercase;padding:9px 13px;cursor:pointer;color:var(--muted);border-right:1px solid var(--line2)
 }
 .filter button:last-child{border-right:0}
-.filter button.active{background:var(--steel);color:#fff}
+.filter button.active{background:linear-gradient(180deg,#2563eb,#1d4ed8);color:#fff}
 .count{font-family:'Oswald';font-weight:500;color:var(--muted);font-size:13px;letter-spacing:.5px;text-transform:uppercase}
 /* ---------- Board / Table ---------- */
 .wrap{padding:0 22px 60px}
@@ -75,15 +75,16 @@ header .spacer{flex:1}
 .scroll{overflow-x:auto}
 table{border-collapse:collapse;width:100%;min-width:1320px}
 thead th{
-  background:var(--steel2);color:#cfd6df;font-family:'Oswald';font-weight:500;font-size:11.5px;
+  background:linear-gradient(180deg,#2d3744,#222a34);color:#e2e8f0;font-family:'Oswald';font-weight:500;font-size:11.5px;
   letter-spacing:1px;text-transform:uppercase;text-align:center;padding:12px 13px;white-space:nowrap;
   position:sticky;top:0;border-bottom:2px solid var(--amber)
 }
 tbody td{padding:11px 13px;border-bottom:1px solid var(--line2);vertical-align:middle;font-size:14px;text-align:center}
-tbody tr:hover{background:#f7f9fb}
+tbody tr:hover{background:#f3f7ff}
+tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 var(--amber)}
 tbody tr.flash{animation:flash 2.4s ease}
 @keyframes flash{0%,40%{background:#fff7df}100%{background:transparent}}
-.tkt{font-family:'Oswald';font-weight:600;font-size:15px;letter-spacing:.5px}
+.tkt{font-family:'Oswald';font-weight:700;font-size:15px;letter-spacing:.5px;color:#b91c1c}
 .tkt .uid{display:block;font-family:'Barlow';font-weight:400;font-size:11px;color:var(--muted);letter-spacing:0}
 /* site cell */
 .site .nm{font-weight:600}
@@ -130,8 +131,17 @@ input.qtyin:focus{outline:2px solid var(--amber);border-color:var(--amber)}
 }
 .icobtn:hover{background:var(--steel);color:#fff;border-color:var(--steel)}
 .icobtn.danger:hover{background:#dc2626;border-color:#dc2626}
+/* colored action buttons */
+.icobtn.ib-edit{color:#1d4ed8;border-color:#bfdbfe;background:#eff6ff}
+.icobtn.ib-edit:hover{color:#fff;background:#1d4ed8;border-color:#1d4ed8}
+.icobtn.ib-mail{color:#0e7490;border-color:#a5f3fc;background:#ecfeff}
+.icobtn.ib-mail:hover{color:#fff;background:#0e7490;border-color:#0e7490}
+.icobtn.ib-del{color:#dc2626;border-color:#fecaca;background:#fef2f2}
+.icobtn.ib-del:hover{color:#fff;background:#dc2626;border-color:#dc2626}
+.icobtn.ib-qr{width:42px;height:38px;color:#6d28d9;border-color:#ddd6fe;background:#f5f3ff;box-shadow:0 1px 3px rgba(109,40,217,.12)}
+.icobtn.ib-qr:hover{color:#fff;background:#6d28d9;border-color:#6d28d9}
 /* row actions */
-.rowact{display:flex;gap:6px}
+.rowact{display:flex;gap:6px;justify-content:center}
 /* popover */
 .pop{
   position:fixed;z-index:80;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(16,22,30,.18);
@@ -414,20 +424,18 @@ function render(){
       <td><select class="cell wide" onchange="upd('${o.id}','casters',this.value)">${opt(CASTERS,o.casters)}</select></td>
       <td class="notes-cell">
         <textarea onchange="upd('${o.id}','notes',this.value)" placeholder="Notes…">${esc(o.notes)}</textarea>
-        <div class="notes-act">
-          <button class="icobtn" title="Email notes to ${CONFIG.EMAIL_TO} (opens your mail app)" onclick="emailNotes('${o.id}')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
-          </button>
-        </div>
       </td>
-      <td><button class="icobtn" title="Show / print QR" onclick="openQR('${o.id}')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7M17 21h.01"/></svg>
+      <td><button class="icobtn ib-qr" title="Show / print QR" onclick="openQR('${o.id}')">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7M17 21h.01"/></svg>
       </button></td>
       <td><div class="rowact">
-        <button class="icobtn" title="Edit" onclick="openEdit('${o.id}')">
+        <button class="icobtn ib-edit" title="Edit" onclick="openEdit('${o.id}')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
         </button>
-        <button class="icobtn danger" title="Delete" onclick="del('${o.id}')">
+        <button class="icobtn ib-mail" title="Email notes to ${CONFIG.EMAIL_TO} (opens your mail app)" onclick="emailNotes('${o.id}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+        </button>
+        <button class="icobtn ib-del" title="Delete" onclick="del('${o.id}')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
         </button>
       </div></td>`;
