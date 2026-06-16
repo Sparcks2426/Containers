@@ -393,7 +393,7 @@ function render(){
   document.getElementById('count').textContent = list.length+' '+(list.length===1?'order':'orders');
   document.getElementById('empty').style.display = orders.length? 'none':'block';
 
-  list.forEach(o=>{
+  list.forEach(o=>{ try{
     const tr=document.createElement('tr'); tr.id='row-'+o.id;
     const st=STATUS[o.status]||STATUS["New"];
     const lt=LOAD[o.loadType]||LOAD["Front Load"];
@@ -432,10 +432,10 @@ function render(){
         </button>
       </div></td>`;
     tb.appendChild(tr);
-  });
+  }catch(err){console.error('row render failed',o&&o.id,err);} });
 }
 function opt(arr,v){return arr.map(a=>`<option ${a===v?'selected':''}>${a}</option>`).join('')}
-function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 
 /* ---------- inline updates ---------- */
 function upd(id,field,val){const o=orders.find(x=>x.id===id);if(!o)return;o[field]=val;persist();
@@ -566,10 +566,10 @@ function pushDelete(id){pushWrite({action:'delete',id});}
 let _recon=null;
 function scheduleReconcile(){clearTimeout(_recon);_recon=setTimeout(()=>{if(!isEditingNow())fetchRemote();},2500);}
 function normalize(o){return{
-  id:o.id||uid(),ticketId:o.ticketId||'',status:o.status||'New',siteName:o.siteName||'',
-  address:o.address||'',phone:o.phone||'',category:o.category||'New Container',
-  loadType:o.loadType||'Front Load',containerType:o.containerType||'2 Yard',
-  lids:o.lids||'None',qty:clampQty(o.qty),casters:o.casters||'None',notes:o.notes||'',createdAt:o.createdAt||Date.now()};}
+  id:o.id||uid(),ticketId:o.ticketId==null?'':String(o.ticketId),status:o.status||'New',siteName:o.siteName==null?'':String(o.siteName),
+  address:o.address==null?'':String(o.address),phone:o.phone==null?'':String(o.phone),category:o.category||'New Container',
+  loadType:o.loadType||'Front Load',containerType:o.containerType==null?'':String(o.containerType),
+  lids:o.lids||'None',qty:clampQty(o.qty),casters:o.casters||'None',notes:o.notes==null?'':String(o.notes),createdAt:o.createdAt||Date.now()};}
 function isEditingNow(){
   if(document.getElementById('formModal').classList.contains('open'))return true;
   if(document.getElementById('qrModal').classList.contains('open'))return true;
