@@ -76,10 +76,10 @@ header .spacer{flex:1}
 table{border-collapse:collapse;width:100%;min-width:1320px}
 thead th{
   background:var(--steel2);color:#cfd6df;font-family:'Oswald';font-weight:500;font-size:11.5px;
-  letter-spacing:1px;text-transform:uppercase;text-align:left;padding:12px 13px;white-space:nowrap;
+  letter-spacing:1px;text-transform:uppercase;text-align:center;padding:12px 13px;white-space:nowrap;
   position:sticky;top:0;border-bottom:2px solid var(--amber)
 }
-tbody td{padding:11px 13px;border-bottom:1px solid var(--line2);vertical-align:top;font-size:14px}
+tbody td{padding:11px 13px;border-bottom:1px solid var(--line2);vertical-align:middle;font-size:14px;text-align:center}
 tbody tr:hover{background:#f7f9fb}
 tbody tr.flash{animation:flash 2.4s ease}
 @keyframes flash{0%,40%{background:#fff7df}100%{background:transparent}}
@@ -120,10 +120,10 @@ input.qtyin:focus{outline:2px solid var(--amber);border-color:var(--amber)}
 .notes-cell{min-width:200px;max-width:260px}
 .notes-cell textarea{
   width:100%;min-height:46px;resize:vertical;font-family:'Barlow';font-size:13px;color:var(--ink);
-  border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:#fbfcfd
+  border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:#fbfcfd;text-align:left
 }
 .notes-cell textarea:focus{outline:2px solid var(--amber);border-color:var(--amber)}
-.notes-act{display:flex;gap:6px;margin-top:6px}
+.notes-act{display:flex;gap:6px;margin-top:6px;justify-content:center}
 .icobtn{
   border:1px solid var(--line);background:#fff;border-radius:7px;width:34px;height:30px;display:grid;place-items:center;
   cursor:pointer;color:var(--muted);transition:.12s
@@ -238,8 +238,8 @@ input.qtyin:focus{outline:2px solid var(--amber);border-color:var(--amber)}
     <div class="scroll">
       <table>
         <thead><tr>
-          <th>Ticket ID</th><th>Location</th><th>Status</th><th>Qty</th><th>Container</th>
-          <th>Build</th><th>Load</th><th>Lids</th><th>Casters</th><th>Notes</th><th>QR</th><th></th>
+          <th>Ticket ID</th><th>Location</th><th>Status</th><th>Qty</th><th>Build</th>
+          <th>Container Size</th><th>Load Style</th><th>Lids Type</th><th>Casters</th><th>Notes</th><th>QR</th><th></th>
         </tr></thead>
         <tbody id="rows"></tbody>
       </table>
@@ -398,7 +398,7 @@ function render(){
     const st=STATUS[o.status]||STATUS["New"];
     const lt=LOAD[o.loadType]||LOAD["Front Load"];
     tr.innerHTML=`
-      <td><span class="tkt">${esc(o.ticketId)||'—'}<span class="uid">${o.id}</span></span></td>
+      <td><span class="tkt">${esc(o.ticketId)||'—'}</span></td>
       <td class="site">
         <div class="nm">${esc(o.siteName)||'—'}</div>
         ${o.address?`<div class="ad">${esc(o.address)}</div>`:''}
@@ -406,9 +406,9 @@ function render(){
       </td>
       <td><span class="pill ${st.c}" onclick="openPop(event,'${o.id}','status')">${esc(o.status)}<span class="car">▼</span></span></td>
       <td><input class="qtyin" type="number" min="1" max="10" value="${o.qty||1}" onchange="updQty('${o.id}',this)"></td>
-      <td><select class="cell" onchange="upd('${o.id}','containerType',this.value)">${opt(CONTAINER_TYPES,o.containerType)}</select></td>
       <td><select class="cell ${o.category==='New Container'?'cat-new':'cat-rebuilt'}" onchange="upd('${o.id}','category',this.value)">
         ${opt(['New Container','Rebuilt Container'],o.category)}</select></td>
+      <td><select class="cell" onchange="upd('${o.id}','containerType',this.value)">${opt(CONTAINER_TYPES,o.containerType)}</select></td>
       <td><span class="pill ${lt.c}" onclick="openPop(event,'${o.id}','loadType')">${esc(o.loadType)}<span class="car">▼</span></span></td>
       <td><select class="cell" onchange="upd('${o.id}','lids',this.value)">${opt(['None','Plastic','Steel'],o.lids)}</select></td>
       <td><select class="cell wide" onchange="upd('${o.id}','casters',this.value)">${opt(CASTERS,o.casters)}</select></td>
