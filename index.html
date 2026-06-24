@@ -84,7 +84,7 @@ tbody tr:hover{background:#f3f7ff}
 tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 var(--amber)}
 tbody tr.flash{animation:flash 2.4s ease}
 @keyframes flash{0%,40%{background:#fff7df}100%{background:transparent}}
-.tkt{font-family:'Oswald';font-weight:700;font-size:15px;letter-spacing:.5px;color:#b91c1c}
+.tkt{display:inline-flex;align-items:center;gap:8px;cursor:pointer;background:#eef2f8;border:1px solid var(--line);border-radius:8px;padding:5px 9px 5px 11px;color:#b91c1c;font-family:'Oswald';font-weight:700;font-size:15px;letter-spacing:.5px;line-height:1;transition:.13s}
 .tkt .uid{display:block;font-family:'Barlow';font-weight:400;font-size:11px;color:var(--muted);letter-spacing:0}
 /* site cell */
 .site .nm{font-weight:600}
@@ -140,8 +140,40 @@ input.qtyin:focus{outline:2px solid var(--amber);border-color:var(--amber)}
 .icobtn.ib-del:hover{color:#fff;background:#dc2626;border-color:#dc2626}
 .icobtn.ib-qr{width:42px;height:38px;color:#6d28d9;border-color:#ddd6fe;background:#f5f3ff;box-shadow:0 1px 3px rgba(109,40,217,.12)}
 .icobtn.ib-qr:hover{color:#fff;background:#6d28d9;border-color:#6d28d9}
+.icobtn.ib-flag{color:#b45309;border-color:#fde68a;background:#fffbeb}
+.icobtn.ib-flag:hover{color:#fff;background:#d97706;border-color:#d97706}
+.icobtn.ib-flag.on{color:#fff;background:#dc2626;border-color:#dc2626}
 /* row actions */
 .rowact{display:flex;gap:6px;justify-content:center}
+/* drag handle + drop indicators */
+.tktwrap{display:flex;align-items:center;justify-content:center;gap:9px}
+.grip{cursor:grab;color:#c2cad6;font-size:15px;line-height:1;user-select:none;padding:0 2px}
+.grip:hover{color:var(--steel)}
+.grip:active{cursor:grabbing}
+tbody tr.drop-above td{box-shadow:inset 0 3px 0 #2563eb}
+tbody tr.drop-below td{box-shadow:inset 0 -3px 0 #2563eb}
+tbody tr.prio{background:#fff5f5}
+tbody tr.prio:hover{background:#ffecec}
+tbody tr.prio td:first-child{box-shadow:inset 4px 0 0 #dc2626}
+/* clickable ticket + expand panel */
+.tkt:hover{background:#e6ecf3;border-color:#cbd5e1}
+.tkt.open{background:#fff6e3;border-color:var(--amber)}
+.caret{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--amber);color:#1c2128;line-height:0;flex:none}
+.caret svg{transition:transform .16s ease}
+.tkt:not(.open) .caret svg{transform:rotate(-90deg)}
+.detail-row td{background:#eef2f8;padding:0;text-align:left;box-shadow:inset 0 4px 7px -5px rgba(0,0,0,.22),inset 0 -1px 0 var(--line)}
+.detail{padding:14px 22px 16px}
+.detail-head{font-family:'Oswald';font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--steel);font-size:12.5px;margin-bottom:10px}
+.cprog{display:flex;align-items:center;gap:12px;margin-bottom:7px}
+.cprog-label{font-family:'Oswald';font-weight:700;color:var(--steel);width:36px;text-align:center;font-size:14px;flex:none}
+.stages{display:flex;flex:1;gap:4px;min-width:0}
+.st{flex:1;min-width:0;border:1px solid var(--line);background:#fff;border-radius:6px;padding:8px 4px;cursor:pointer;
+  font-family:'Oswald';font-weight:600;font-size:10px;letter-spacing:.3px;text-transform:uppercase;color:#97a0ad;transition:.12s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st:hover{border-color:#16a34a;color:#16a34a}
+.st.done{background:linear-gradient(180deg,#22c55e,#15803d);color:#fff;border-color:#15803d}
+.st.done:hover{color:#fff}
+.cpct{font-family:'Oswald';font-weight:700;color:#15803d;width:48px;text-align:right;font-size:14px;flex:none}
 /* popover */
 .pop{
   position:fixed;z-index:80;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(16,22,30,.18);
@@ -179,11 +211,21 @@ input.qtyin:focus{outline:2px solid var(--amber);border-color:var(--amber)}
 .btn.sec{background:#fff;border:1px solid var(--line);color:var(--muted)}
 .btn.sec:hover{background:var(--line2)}
 /* ---------- QR modal ---------- */
-#qrModal .modal{max-width:380px}
+#qrModal .modal{max-width:580px}
 .qrbox{padding:24px;text-align:center}
-.qrbox .qr{display:inline-block;padding:14px;background:#fff;border:2px solid var(--steel);border-radius:10px}
-.qrbox .qt{font-family:'Oswald';font-weight:700;font-size:22px;letter-spacing:1px;margin-top:14px}
+.qrbox .qt{font-family:'Oswald';font-weight:700;font-size:22px;letter-spacing:1px}
 .qrbox .qsub{color:var(--muted);font-size:13px;margin-top:2px}
+.qrgrid{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:18px;max-height:58vh;overflow:auto}
+.qrcell{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff;box-shadow:var(--shadow)}
+.qrcell .qr{display:block;line-height:0}
+.qrcap{font-family:'Oswald';font-weight:700;font-size:14px;color:var(--steel);margin-top:9px;letter-spacing:.4px}
+.qrcap span{display:block;font-family:'Barlow';font-weight:500;font-size:11px;color:var(--muted);margin-top:2px}
+.qrprint{margin-top:10px;width:100%;border:1px solid var(--line);background:#fff;border-radius:7px;padding:8px;cursor:pointer;
+  font-family:'Oswald';font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:11px;color:var(--steel);
+  display:flex;align-items:center;justify-content:center;gap:6px;transition:.12s}
+.qrprint:hover{background:#6d28d9;color:#fff;border-color:#6d28d9}
+.cprog.cflash{animation:cflash 2.8s ease;border-radius:8px}
+@keyframes cflash{0%,45%{background:#fff2c2}100%{background:transparent}}
 /* ---------- Print ---------- */
 .print-root{display:none}
 @media print{
@@ -198,6 +240,73 @@ input.qtyin:focus{outline:2px solid var(--amber);border-color:var(--amber)}
   .label .lqr{margin-bottom:6px}
   .label .lt{font-family:'Oswald';font-weight:700;font-size:18px;letter-spacing:1px;text-align:center}
   .label .ls{font-size:10px;color:#333;text-align:center;line-height:1.25;margin-top:2px}
+}
+@media(max-width:760px){
+  .wrap{padding:0 10px 48px}
+  header{padding:11px 13px;gap:10px;flex-wrap:wrap}
+  .logo h1{font-size:16px}
+  .logo small{font-size:9px;letter-spacing:1.2px}
+  .wrslogo{padding:4px 8px}
+  .wrslogo img{height:26px}
+  .hbtn{padding:9px 11px;font-size:12px;gap:5px}
+  .newrow{padding:12px 11px 0}
+  .newrow .hbtn{width:100%;justify-content:center;padding:14px;font-size:14px}
+  .toolbar{padding:10px 11px;gap:8px}
+  .search{flex:1 1 100%}
+  .search input{width:100%}
+  .filter{flex:1 1 100%;overflow-x:auto}
+  .count{margin-left:0}
+  .count,#sync{font-size:12px}
+
+  /* table → stacked cards */
+  .tablecard{border:0;background:transparent;box-shadow:none;border-radius:0}
+  .scroll{overflow:visible}
+  table,tbody,tr{display:block;width:auto}
+  table{min-width:0;width:100%}
+  thead{display:none}
+  tbody tr{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin:0 0 12px;overflow:hidden}
+  tbody tr:hover{background:var(--card)}
+  tbody tr:hover td:first-child{box-shadow:none}
+  tbody tr.prio{border-color:#fca5a5}
+  tbody tr.prio td:first-child{box-shadow:none}
+  tbody td{display:flex;justify-content:space-between;align-items:center;gap:14px;text-align:right;padding:10px 14px;border:0;border-bottom:1px solid var(--line2)}
+  tbody td:last-child{border-bottom:0}
+  tbody td::before{content:attr(data-label);font-family:'Oswald';font-weight:600;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);text-align:left;flex:none}
+  tbody td[data-label=""]::before{content:none}
+  .grip{display:none}
+
+  td.c-tkt{justify-content:flex-start;background:#f5f8fc;border-bottom:1px solid var(--line);padding:11px 12px}
+  td.c-tkt .tktwrap{justify-content:flex-start;width:100%}
+  .tkt{font-size:17px;padding:7px 11px}
+
+  td.site{display:block;text-align:left}
+  td.site::before{display:block;margin-bottom:3px}
+  .site .nm,.site .ph{text-align:left}
+
+  td.notes-cell{display:block;text-align:left}
+  td.notes-cell::before{display:block;margin-bottom:5px}
+  .notes-cell textarea{width:100%;min-height:54px;font-size:14px}
+
+  select.cell,select.cell.wide{max-width:62%;font-size:15px;padding:9px 10px}
+  .qtyin{width:66px;height:40px;font-size:16px}
+  .pill{font-size:12px;padding:8px 13px}
+
+  td[data-label=""] .rowact{width:100%;justify-content:space-around;gap:8px}
+  .icobtn{width:46px;height:40px}
+  .icobtn.ib-qr{width:50px;height:42px}
+
+  .detail-row td{display:block;border-bottom:0;padding:0}
+  .detail-row td::before{content:none}
+  .detail{padding:12px}
+  .cprog{flex-wrap:wrap;gap:8px}
+  .cprog-label{width:auto}
+  .cpct{order:2;margin-left:auto}
+  .stages{flex-wrap:wrap;gap:6px;width:100%;order:3}
+  .st{flex:1 1 28%;padding:11px 4px;font-size:10px}
+
+  .overlay{padding:20px 10px}
+  .modal,#qrModal .modal{max-width:none}
+  .qrgrid{gap:10px}
 }
 @media(max-width:640px){.mbody{grid-template-columns:1fr}}
 </style>
@@ -295,15 +404,15 @@ input.qtyin:focus{outline:2px solid var(--amber);border-color:var(--amber)}
 <!-- QR modal -->
 <div class="overlay" id="qrModal">
   <div class="modal">
-    <h2><span>Ticket QR</span><span class="x" onclick="closeQR()">&times;</span></h2>
+    <h2><span>Container QR Codes</span><span class="x" onclick="closeQR()">&times;</span></h2>
     <div class="qrbox">
-      <div class="qr" id="qrTarget"></div>
       <div class="qt" id="qrTicket"></div>
       <div class="qsub" id="qrSub"></div>
+      <div class="qrgrid" id="qrGrid"></div>
     </div>
     <div class="mfoot">
       <button class="btn sec" onclick="closeQR()">Close</button>
-      <button class="btn primary" onclick="printOne()">Print Label</button>
+      <button class="btn primary" onclick="printOne()">Print All</button>
     </div>
   </div>
 </div>
@@ -394,41 +503,43 @@ document.querySelectorAll('#statusFilter button').forEach(b=>b.onclick=()=>{
 
 /* ---------- render ---------- */
 function render(){
-  const q=document.getElementById('search').value.trim().toLowerCase();
   const tb=document.getElementById('rows'); tb.innerHTML='';
-  let list=orders.slice().reverse();
-  if(curFilter!=='all') list=list.filter(o=>o.status===curFilter);
-  if(q) list=list.filter(o=>[o.ticketId,o.siteName,o.address,o.containerType,o.notes].join(' ').toLowerCase().includes(q));
+  const list=displayList();
 
   document.getElementById('count').textContent = list.length+' '+(list.length===1?'order':'orders');
   document.getElementById('empty').style.display = orders.length? 'none':'block';
 
   list.forEach(o=>{ try{
     const tr=document.createElement('tr'); tr.id='row-'+o.id;
+    if(o.priority) tr.classList.add('prio');
+    tr.ondragstart=e=>rowDragStart(e,o.id); tr.ondragover=rowDragOver;
+    tr.ondragleave=rowDragLeave; tr.ondrop=e=>rowDrop(e,o.id); tr.ondragend=rowDragEnd;
     const st=STATUS[o.status]||STATUS["New"];
     const lt=LOAD[o.loadType]||LOAD["Front Load"];
+    const open=expanded.has(o.id);
     tr.innerHTML=`
-      <td><span class="tkt">${esc(o.ticketId)||'—'}</span></td>
-      <td class="site">
+      <td class="c-tkt" data-label=""><div class="tktwrap"><span class="grip" title="Drag to reorder" onmousedown="gripDown(event)">⠿</span><span class="tkt${open?' open':''}" title="Click to show build progress" onclick="toggleExpand('${o.id}')">${esc(o.ticketId)||'—'}<span class="caret"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><path d="M6 9l6 6 6-6"/></svg></span></span></div></td>
+      <td class="site" data-label="Location">
         <div class="nm">${esc(o.siteName)||'—'}</div>
-        ${o.address?`<div class="ad">${esc(o.address)}</div>`:''}
         ${o.phone?`<div class="ph"><a href="tel:${esc(o.phone)}">${esc(o.phone)}</a></div>`:''}
       </td>
-      <td><span class="pill ${st.c}" onclick="openPop(event,'${o.id}','status')">${esc(o.status)}<span class="car">▼</span></span></td>
-      <td><input class="qtyin" type="number" min="1" max="10" value="${o.qty||1}" onchange="updQty('${o.id}',this)"></td>
-      <td><select class="cell ${o.category==='New Container'?'cat-new':'cat-rebuilt'}" onchange="upd('${o.id}','category',this.value)">
-        ${opt(['New Container','Rebuilt Container'],o.category)}</select></td>
-      <td><select class="cell" onchange="upd('${o.id}','containerType',this.value)">${opt(CONTAINER_TYPES,o.containerType)}</select></td>
-      <td><span class="pill ${lt.c}" onclick="openPop(event,'${o.id}','loadType')">${esc(o.loadType)}<span class="car">▼</span></span></td>
-      <td><select class="cell" onchange="upd('${o.id}','lids',this.value)">${opt(['None','Plastic','Steel'],o.lids)}</select></td>
-      <td><select class="cell wide" onchange="upd('${o.id}','casters',this.value)">${opt(CASTERS,o.casters)}</select></td>
-      <td class="notes-cell">
+      <td data-label="Status"><span class="pill ${st.c}" onclick="openPop(event,'${o.id}','status')">${esc(o.status)}<span class="car">▼</span></span></td>
+      <td data-label="Qty"><input class="qtyin" type="number" min="1" max="10" value="${o.qty||1}" onchange="updQty('${o.id}',this)"></td>
+      <td data-label="Build"><select class="cell ${o.category==='New Container'?'cat-new':'cat-rebuilt'}" onchange="upd('${o.id}','category',this.value)">${opt(['New Container','Rebuilt Container'],o.category)}</select></td>
+      <td data-label="Container"><select class="cell" onchange="upd('${o.id}','containerType',this.value)">${opt(CONTAINER_TYPES,o.containerType)}</select></td>
+      <td data-label="Load"><span class="pill ${lt.c}" onclick="openPop(event,'${o.id}','loadType')">${esc(o.loadType)}<span class="car">▼</span></span></td>
+      <td data-label="Lids"><select class="cell" onchange="upd('${o.id}','lids',this.value)">${opt(['None','Plastic','Steel'],o.lids)}</select></td>
+      <td data-label="Casters"><select class="cell wide" onchange="upd('${o.id}','casters',this.value)">${opt(CASTERS,o.casters)}</select></td>
+      <td class="notes-cell" data-label="Notes">
         <textarea onchange="upd('${o.id}','notes',this.value)" placeholder="Notes…">${esc(o.notes)}</textarea>
       </td>
-      <td><button class="icobtn ib-qr" title="Show / print QR" onclick="openQR('${o.id}')">
+      <td data-label="QR"><button class="icobtn ib-qr" title="Show / print QR" onclick="openQR('${o.id}')">
         <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7M17 21h.01"/></svg>
       </button></td>
-      <td><div class="rowact">
+      <td data-label=""><div class="rowact">
+        <button class="icobtn ib-flag${o.priority?' on':''}" title="${o.priority?'Priority — click to clear':'Mark priority'}" onclick="togglePriority('${o.id}')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="${o.priority?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M5 22V4M5 4h11l-2.5 4 2.5 4H5"/></svg>
+        </button>
         <button class="icobtn ib-edit" title="Edit" onclick="openEdit('${o.id}')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
         </button>
@@ -440,17 +551,99 @@ function render(){
         </button>
       </div></td>`;
     tb.appendChild(tr);
+    if(open){
+      const dtr=document.createElement('tr'); dtr.className='detail-row'; dtr.id='detail-'+o.id;
+      const dtd=document.createElement('td'); dtd.colSpan=12; dtd.innerHTML=detailHTML(o);
+      dtr.appendChild(dtd); tb.appendChild(dtr);
+    }
   }catch(err){console.error('row render failed',o&&o.id,err);} });
 }
 function opt(arr,v){return arr.map(a=>`<option ${a===v?'selected':''}>${a}</option>`).join('')}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* ---------- ordering / filtering ---------- */
+function displayList(){
+  const q=document.getElementById('search').value.trim().toLowerCase();
+  let list=orders.slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
+  if(curFilter!=='all') list=list.filter(o=>o.status===curFilter);
+  if(q) list=list.filter(o=>[o.ticketId,o.siteName,o.address,o.containerType,o.notes].join(' ').toLowerCase().includes(q));
+  return list;
+}
+
+/* ---------- click-to-expand: per-container build progress ---------- */
+const STAGES=['Core','Full Weld Core','Pockets','Pads/Casters','Paint','Lids'];
+const expanded=new Set();
+function toggleExpand(id){ expanded.has(id)?expanded.delete(id):expanded.add(id); render(); }
+function getProg(o){
+  let a=[]; try{a=JSON.parse(o.progress||'[]');}catch(_){a=[];}
+  const n=clampQty(o.qty), out=[];
+  for(let i=0;i<n;i++){let v=parseInt(a[i],10); if(isNaN(v)||v<0)v=0; if(v>STAGES.length)v=STAGES.length; out[i]=v;}
+  return out;
+}
+function setStage(id,ci,stage){
+  const o=orders.find(x=>x.id===id); if(!o)return;
+  const a=getProg(o);
+  a[ci]=(a[ci]===stage)?stage-1:stage; if(a[ci]<0)a[ci]=0;
+  o.progress=JSON.stringify(a); persist(); render(); pushUpsert(o);
+}
+function detailHTML(o){
+  const prog=getProg(o);
+  let h=`<div class="detail"><div class="detail-head">Build progress — ${prog.length} container${prog.length>1?'s':''} · ${esc(o.containerType)}</div>`;
+  prog.forEach((done,i)=>{
+    h+=`<div class="cprog"><div class="cprog-label">#${i+1}</div><div class="stages">`;
+    for(let s=1;s<=STAGES.length;s++)
+      h+=`<button class="st${s<=done?' done':''}" onclick="setStage('${o.id}',${i},${s})">${STAGES[s-1]}</button>`;
+    h+=`</div><div class="cpct">${Math.round(done/STAGES.length*100)}%</div></div>`;
+  });
+  return h+`</div>`;
+}
+
+/* ---------- priority ---------- */
+function togglePriority(id){const o=orders.find(x=>x.id===id);if(!o)return;o.priority=!o.priority;persist();render();pushUpsert(o);}
+
+/* ---------- drag & drop reorder (grip handle) ---------- */
+let dragId=null;
+function gripDown(e){const tr=e.target.closest('tr');if(!tr)return;tr.setAttribute('draggable','true');
+  const up=()=>{tr.removeAttribute('draggable');document.removeEventListener('mouseup',up);};
+  document.addEventListener('mouseup',up);}
+function rowDragStart(e,id){dragId=id;e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',id);}catch(_){}}
+function rowDragOver(e){if(!dragId)return;e.preventDefault();e.dataTransfer.dropEffect='move';
+  const tr=e.currentTarget,r=tr.getBoundingClientRect(),below=e.clientY>r.top+r.height/2;
+  tr.classList.toggle('drop-below',below);tr.classList.toggle('drop-above',!below);}
+function rowDragLeave(e){e.currentTarget.classList.remove('drop-above','drop-below');}
+function rowDrop(e,targetId){e.preventDefault();
+  const tr=e.currentTarget,r=tr.getBoundingClientRect(),below=e.clientY>r.top+r.height/2;
+  tr.classList.remove('drop-above','drop-below');
+  if(dragId&&dragId!==targetId)moveOrder(dragId,targetId,below);}
+function rowDragEnd(){document.querySelectorAll('tr.drop-above,tr.drop-below').forEach(t=>t.classList.remove('drop-above','drop-below'));dragId=null;}
+function moveOrder(dId,targetId,below){
+  const dragged=orders.find(o=>o.id===dId); if(!dragged)return;
+  const without=displayList().filter(o=>o.id!==dId);
+  let at=without.findIndex(o=>o.id===targetId); if(at<0)return; if(below)at+=1;
+  const prev=without[at-1],next=without[at];
+  if(!prev&&!next)dragged.sort=0;
+  else if(!prev)dragged.sort=(next.sort||0)-1;
+  else if(!next)dragged.sort=(prev.sort||0)+1;
+  else dragged.sort=((prev.sort||0)+(next.sort||0))/2;
+  persist();render();pushUpsert(dragged);
+}
 
 /* ---------- inline updates ---------- */
 function upd(id,field,val){const o=orders.find(x=>x.id===id);if(!o)return;o[field]=val;persist();
   if(field==='category'||field==='status'||field==='loadType')render();
   pushUpsert(o);}
 function clampQty(v){v=parseInt(v,10);if(isNaN(v)||v<1)return 1;return v>10?10:v;}
-function updQty(id,el){const v=clampQty(el.value);el.value=v;upd(id,'qty',v);}
+function syncProg(o){
+  const n=clampQty(o.qty);let a=[];try{a=JSON.parse(o.progress||'[]')}catch(_){a=[]}
+  a=a.slice(0,n);while(a.length<n)a.push(0);
+  o.progress=JSON.stringify(a);
+}
+function updQty(id,el){
+  const v=clampQty(el.value);el.value=v;
+  const o=orders.find(x=>x.id===id);if(!o)return;
+  o.qty=v;syncProg(o);persist();render();pushUpsert(o);
+  if(document.getElementById('qrModal').classList.contains('open')&&qrId===id)openQR(id);
+}
 
 /* ---------- pill popover ---------- */
 let pop=null;
@@ -491,7 +684,8 @@ function saveForm(){
   if(!data.ticketId){alert('Ticket ID is required.');return}
   let saved;
   if(editingId){saved=orders.find(x=>x.id===editingId);Object.assign(saved,data)}
-  else{saved={id:uid(),createdAt:Date.now(),...data};orders.push(saved)}
+  else{saved={id:uid(),createdAt:Date.now(),sort:-Date.now(),priority:false,progress:'',...data};orders.push(saved)}
+  syncProg(saved);
   persist();closeForm();render();
   pushUpsert(saved);
 }
@@ -501,29 +695,49 @@ function show(id){document.getElementById(id).classList.add('open')}
 function hide(id){document.getElementById(id).classList.remove('open')}
 
 /* ---------- QR ---------- */
-function qrUrl(o){return CONFIG.BASE_URL+'?ticket='+encodeURIComponent(o.ticketId)}
+function qrUrl(o,ci){return CONFIG.BASE_URL+'?ticket='+encodeURIComponent(o.ticketId)+(ci?'&c='+ci:'')}
+function stageLabel(done){return done===0?'Not started':(done>=STAGES.length?'Complete':STAGES[done-1]+' done');}
 function openQR(id){const o=orders.find(x=>x.id===id);if(!o)return;qrId=id;
-  const t=document.getElementById('qrTarget');t.innerHTML='';
-  new QRCode(t,{text:qrUrl(o),width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
   document.getElementById('qrTicket').textContent=o.ticketId||'—';
   document.getElementById('qrSub').textContent=[o.containerType,o.siteName].filter(Boolean).join(' • ');
+  const grid=document.getElementById('qrGrid');grid.innerHTML='';
+  const prog=getProg(o);
+  prog.forEach((done,i)=>{
+    const cell=document.createElement('div');cell.className='qrcell';
+    const q=document.createElement('div');q.className='qr';
+    new QRCode(q,{text:qrUrl(o,i+1),width:150,height:150,correctLevel:QRCode.CorrectLevel.M});
+    const cap=document.createElement('div');cap.className='qrcap';
+    cap.innerHTML=`Container #${i+1}<span>${Math.round(done/STAGES.length*100)}% • ${esc(stageLabel(done))}</span>`;
+    const btn=document.createElement('button');btn.className='qrprint';
+    btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print`;
+    btn.onclick=()=>printLabel(o.id,i+1);
+    cell.append(q,cap,btn);grid.appendChild(cell);
+  });
   show('qrModal');}
 function closeQR(){hide('qrModal')}
-function makeLabel(o){
+function printLabel(id,ci){
+  const o=orders.find(x=>x.id===id);if(!o)return;
+  const box=document.getElementById('printLabels');box.innerHTML='';
+  box.appendChild(makeLabel(o,ci));
+  setTimeout(()=>window.print(),200);
+}
+function makeLabel(o,ci){
   const wrap=document.createElement('div');wrap.className='label';
   const qd=document.createElement('div');qd.className='lqr';
-  new QRCode(qd,{text:qrUrl(o),width:130,height:130,correctLevel:QRCode.CorrectLevel.M});
-  const t=document.createElement('div');t.className='lt';t.textContent=o.ticketId||'—';
+  new QRCode(qd,{text:qrUrl(o,ci),width:130,height:130,correctLevel:QRCode.CorrectLevel.M});
+  const t=document.createElement('div');t.className='lt';t.textContent=(o.ticketId||'—')+' · #'+ci;
   const s=document.createElement('div');s.className='ls';
   s.textContent=[o.containerType,o.category,o.siteName].filter(Boolean).join(' • ');
   wrap.append(qd,t,s);return wrap;
 }
 function printOne(){const o=orders.find(x=>x.id===qrId);if(!o)return;
-  const box=document.getElementById('printLabels');box.innerHTML='';box.appendChild(makeLabel(o));
-  setTimeout(()=>window.print(),250);}
+  const box=document.getElementById('printLabels');box.innerHTML='';
+  const n=clampQty(o.qty);for(let i=1;i<=n;i++)box.appendChild(makeLabel(o,i));
+  setTimeout(()=>window.print(),300);}
 function printAll(){if(!orders.length){alert('No orders to print.');return}
   const box=document.getElementById('printLabels');box.innerHTML='';
-  orders.forEach(o=>box.appendChild(makeLabel(o)));setTimeout(()=>window.print(),350);}
+  orders.forEach(o=>{const n=clampQty(o.qty);for(let i=1;i<=n;i++)box.appendChild(makeLabel(o,i));});
+  setTimeout(()=>window.print(),400);}
 
 /* ---------- email notes (opens the current user's own mail app) ---------- */
 function emailNotes(id){
@@ -573,11 +787,17 @@ function pushUpsert(o){pushWrite({action:'upsert',order:o});}
 function pushDelete(id){pushWrite({action:'delete',id});}
 let _recon=null;
 function scheduleReconcile(){clearTimeout(_recon);_recon=setTimeout(()=>{if(!isEditingNow())fetchRemote();},2500);}
-function normalize(o){return{
+function normalize(o){
+  let sv=(o.sort===''||o.sort==null)?NaN:Number(o.sort);
+  if(isNaN(sv)){const c=Number(o.createdAt);sv=isNaN(c)?0:-c;}
+  return{
   id:o.id||uid(),ticketId:o.ticketId==null?'':String(o.ticketId),status:o.status||'New',siteName:o.siteName==null?'':String(o.siteName),
   address:o.address==null?'':String(o.address),phone:o.phone==null?'':String(o.phone),category:o.category||'New Container',
   loadType:o.loadType||'Front Load',containerType:o.containerType==null?'':String(o.containerType),
-  lids:o.lids||'None',qty:clampQty(o.qty),casters:o.casters||'None',notes:o.notes==null?'':String(o.notes),createdAt:o.createdAt||Date.now()};}
+  lids:o.lids||'None',qty:clampQty(o.qty),casters:o.casters||'None',notes:o.notes==null?'':String(o.notes),
+  priority:o.priority===true||o.priority==='true'||o.priority==='TRUE'||o.priority===1,
+  sort:sv,progress:typeof o.progress==='string'?o.progress:(o.progress?JSON.stringify(o.progress):''),
+  createdAt:o.createdAt||Date.now()};}
 function isEditingNow(){
   if(document.getElementById('formModal').classList.contains('open'))return true;
   if(document.getElementById('qrModal').classList.contains('open'))return true;
@@ -597,12 +817,21 @@ function startAutoRefresh(){setInterval(()=>{if(!isEditingNow())fetchRemote();},
 
 /* ---------- deep link (QR scan locates ticket) ---------- */
 function handleDeepLink(){
-  const t=new URLSearchParams(location.search).get('ticket');
-  if(!t)return;
-  document.getElementById('search').value=t;render();
+  const sp=new URLSearchParams(location.search);
+  const t=sp.get('ticket'); if(!t)return;
+  const c=parseInt(sp.get('c'),10);
+  document.getElementById('search').value=t;
   const o=orders.find(x=>(x.ticketId||'').toLowerCase()===t.toLowerCase());
-  if(o){const row=document.getElementById('row-'+o.id);
-    if(row){row.classList.add('flash');row.scrollIntoView({behavior:'smooth',block:'center'})}}
+  if(o&&c>0)expanded.add(o.id);
+  render();
+  if(!o)return;
+  const row=document.getElementById('row-'+o.id);
+  if(row){row.classList.add('flash');row.scrollIntoView({behavior:'smooth',block:'center'});}
+  if(c>0)setTimeout(()=>{
+    const detail=document.getElementById('detail-'+o.id);
+    if(detail){const target=detail.querySelectorAll('.cprog')[c-1];
+      if(target){target.classList.add('cflash');target.scrollIntoView({behavior:'smooth',block:'center'});}}
+  },180);
 }
 
 /* ---------- init ---------- */
