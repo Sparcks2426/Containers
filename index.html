@@ -119,6 +119,17 @@ tbody tr.prio{background:#fff5f5}
 .mfoot{padding:13px 18px;display:flex;justify-content:flex-end;gap:9px;border-top:1px solid var(--line2);background:#f7f9fb}
 .btn{font-family:'Oswald';text-transform:uppercase;letter-spacing:.5px;font-weight:600;font-size:13px;border:0;cursor:pointer;padding:10px 17px;border-radius:8px}
 .btn.primary{background:var(--amber);color:#1c2128}.btn.sec{background:#fff;border:1px solid var(--line);color:var(--muted)}
+.form{padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:13px 14px;max-height:64vh;overflow:auto}
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld.full{grid-column:1/-1}
+.fld label{font-family:'Oswald';font-weight:600;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.fld input,.fld select,.fld textarea{border:1px solid var(--line);border-radius:8px;padding:9px 10px;font:inherit;font-size:14px;background:#fbfcfd;color:var(--ink)}
+.fld input:focus,.fld select:focus,.fld textarea:focus{outline:2px solid var(--amber);border-color:var(--amber)}
+.fld textarea{min-height:62px;resize:vertical}
+.fld.chk{flex-direction:row;align-items:center;gap:9px}
+.fld.chk input{width:18px;height:18px}
+.fld.chk label{text-transform:none;font-size:13.5px;color:var(--ink);font-family:'Barlow';letter-spacing:0}
+@media(max-width:560px){.form{grid-template-columns:1fr}}
 .print-root{display:none}
 @media print{body *{visibility:hidden}.print-root,.print-root *{visibility:visible}.print-root{display:block;position:absolute;inset:0;background:#fff}
 .labels{display:flex;flex-wrap:wrap}.label{width:2.5in;height:2.5in;border:1px dashed #999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;page-break-inside:avoid}
@@ -172,6 +183,9 @@ tbody tr.prio{background:#fff5f5}
   .st{flex:1 0 30%;font-size:10.5px;padding:9px 4px}
   .pct{width:auto;min-width:42px}
 }
+.sync{font-family:'Oswald';font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-left:12px;color:#16a34a;white-space:nowrap}
+tbody tr.flash{animation:flash 2.2s ease}
+@keyframes flash{0%,35%{background:#fff7df}100%{background:transparent}}
 </style>
 </head>
 <body>
@@ -179,10 +193,11 @@ tbody tr.prio{background:#fff5f5}
   <div class="mark">WRS</div>
   <div class="htitle"><h1>Containers</h1><small>Fab &amp; Rebuild Tracker</small></div>
   <div class="sp"></div>
+  <button class="hbtn g" onclick="loadRemote(true)">⟳ Refresh</button>
   <button class="hbtn g" onclick="printAll()">⎙ Print QR</button>
 </header>
 <div class="toolbar">
-  <button class="hbtn" onclick="alert('Demo: New Order form would open here.')">+ New Order</button>
+  <button class="hbtn" onclick="openForm()">+ New Order</button>
   <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9aa3af" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="search" placeholder="Search ticket, site, container…" oninput="render()"></div>
   <div class="filter" id="filter">
     <button class="active" data-f="all">All</button>
@@ -192,7 +207,7 @@ tbody tr.prio{background:#fff5f5}
     <button data-f="Ready for Delivery">Ready</button>
     <button class="dv" data-f="Completed">Delivered</button>
   </div>
-  <span class="count" id="count"></span>
+  <span class="count" id="count"></span><span class="sync" id="sync"></span>
 </div>
 <div class="wrap"><div class="card"><div class="scroll">
 <table>
@@ -212,10 +227,37 @@ tbody tr.prio{background:#fff5f5}
   <div class="qrbox"><div class="qt" id="qrT"></div><div class="qsub" id="qrS"></div><div class="qrgrid" id="qrG"></div></div>
   <div class="mfoot"><button class="btn sec" onclick="closeQR()">Close</button><button class="btn primary" onclick="printTicket()">Print All</button></div>
 </div></div>
+<div class="overlay" id="formModal"><div class="modal">
+  <h2><span id="formTitle">New Order</span><span class="x" onclick="closeForm()">&times;</span></h2>
+  <div class="form">
+    <div class="fld"><label>Ticket #</label><input id="f_id" placeholder="e.g. 32999"></div>
+    <div class="fld"><label>Status</label><select id="f_st"></select></div>
+    <div class="fld full"><label>Location / Site</label><input id="f_loc" placeholder="Site name"></div>
+    <div class="fld full"><label>Address</label><input id="f_addr" placeholder="Street, City, ST ZIP"></div>
+    <div class="fld"><label>Phone</label><input id="f_ph" placeholder="(000) 000-0000"></div>
+    <div class="fld"><label>Order Placed</label><input type="date" id="f_pl"></div>
+    <div class="fld"><label>Projected Completion</label><input type="date" id="f_du"></div>
+    <div class="fld"><label>Qty</label><input type="number" min="1" max="10" id="f_qty" value="1"></div>
+    <div class="fld"><label>Build</label><select id="f_bd"></select></div>
+    <div class="fld"><label>Container Size</label><select id="f_sz"></select></div>
+    <div class="fld"><label>Load Style</label><select id="f_ld"></select></div>
+    <div class="fld"><label>Lids</label><select id="f_li"></select></div>
+    <div class="fld"><label>Casters</label><select id="f_ca"></select></div>
+    <div class="fld chk full"><input type="checkbox" id="f_prio"><label for="f_prio">Mark as priority</label></div>
+    <div class="fld full"><label>Notes</label><textarea id="f_no" placeholder="Notes…"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn sec" onclick="closeForm()">Cancel</button><button class="btn primary" onclick="saveForm()">Save Order</button></div>
+</div></div>
 <div class="print-root"><div class="labels" id="printLabels"></div></div>
 
 <script>
-const BASE=location.origin+location.pathname;
+/* ===== CONFIG ===== */
+const CONFIG={
+  API_URL:"https://script.google.com/macros/s/AKfycbyOxDL3K5Mlc4PMLbvKAkUJFpou8VziaMfEGQevi0mnZ6uvwv_KWs1S3hI_9SRHIaXx/exec",
+  EMAIL_TO:"don@gtsupplies.com",
+  BASE_URL:location.origin+location.pathname
+};
+const BASE=CONFIG.BASE_URL;
 const SIZES=['1','1.5','2','2.33','2.34','3','4','6','8'];
 const CTYPES=[];SIZES.forEach(s=>{CTYPES.push(s+' Yard',s+' Yard Slant');if(s==='2')CTYPES.push('2 Yard Compactor Style');});
 const CASTERS=['None','Standard 6" x4 Swivel','Standard 6" 2x Swivel 2x Rigid','Cushion 6"','Cushion 8"','Steel Poly 6" Rigid','Steel Poly 6" Swivel'];
@@ -227,24 +269,18 @@ const SHORT={'Core':'Core','Full Weld Core':'Full Weld','Pockets':'Pockets','Pad
 const STATUS={'Pick Up':{c:'p-pick',d:'#b45309'},'New':{c:'p-new',d:'#1d4ed8'},'In-Progress':{c:'p-prog',d:'#6d28d9'},'Completed':{c:'p-comp',d:'#15803d'},'Ready for Delivery':{c:'p-ready',d:'#0e7490'}};
 const LOAD={'Front Load':{c:'p-front',d:'#0369a1'},'Rear Load':{c:'p-rear',d:'#9a3412'}};
 const FINISHED='Completed'; // pulled out of the main board into the Delivered filter
-let D=[
-{id:'32862',loc:'Sea Ranch of Boca - Bldg B',st:'New',pl:'2026-04-08',du:'2026-04-22',qty:1,bd:'Rebuilt Container',sz:'2 Yard',ld:'Front Load',li:'Plastic',ca:'Standard 6" 2x Swivel 2x Rigid',no:'Refurbished 2 Cubic Yd. Front Load. Prime + finish paint.',prio:true,pr:[2]},
-{id:'31294',loc:'Royal Palm Way',st:'New',pl:'2026-04-08',du:'',qty:1,bd:'New Container',sz:'2 Yard',ld:'Rear Load',li:'Plastic',ca:'None',no:'Order placed 4.8: BUILD 1 x New 2 Yd Rear Load Slant.',pr:[0]},
-{id:'32261',loc:'3120 Condominium Association, Inc',st:'In-Progress',pl:'2026-04-10',du:'2026-04-18',qty:2,bd:'New Container',sz:'1 Yard',ld:'Rear Load',li:'Plastic',ca:'Cushion 6"',no:'2 - New 1yd Rear Load Dumpster. Plastic lids.',pr:[6,3]},
-{id:'32002',loc:'Beach Point Condominium',st:'In-Progress',pl:'2026-04-11',du:'2026-04-15',qty:1,bd:'New Container',sz:'1 Yard Slant',ld:'Rear Load',li:'Plastic',ca:'Steel Poly 6" Swivel',no:'1 - New 1yd Rear Load Slant Dumpster.',pr:[4]},
-{id:'32348',loc:'IL Lugano Condo',st:'New',pl:'',du:'',qty:3,bd:'New Container',sz:'1 Yard',ld:'Rear Load',li:'Plastic',ca:'Cushion 8"',no:'',pr:[0,0,0]},
-{id:'31570',loc:'Lake Colony',st:'Ready for Delivery',pl:'2026-04-02',du:'2026-04-20',qty:1,bd:'Rebuilt Container',sz:'4 Yard',ld:'Front Load',li:'None',ca:'Steel Poly 6" Rigid',no:'On truck Friday.',pr:[6]},
-{id:'31938',loc:'Casa Del Rio',st:'In-Progress',pl:'2026-06-16',du:'2026-06-30',qty:5,bd:'New Container',sz:'2 Yard',ld:'Front Load',li:'Plastic',ca:'Standard 6" x4 Swivel',no:'Paint Green',pr:[6,4,2,0,0]},
-{id:'31845',loc:'Delray Racquet Club',st:'Completed',pl:'2026-03-18',du:'2026-04-01',qty:1,bd:'New Container',sz:'2 Yard',ld:'Front Load',li:'Plastic',ca:'Standard 6" x4 Swivel',no:'Delivered & installed 4/1.',pr:[6]},
-];
-const expanded=new Set(['32261','31938']);
-let curFilter='all',qrId=null;
+
+let D=[];
+const expanded=new Set();
+let curFilter='all',qrId=null,editId=null,saveTimer=null,formFilled=false,deepDone=false;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clampQty=v=>{v=parseInt(v,10);if(isNaN(v)||v<1)return 1;return v>10?10:v;};
 const opt=(arr,v)=>arr.map(a=>`<option ${a===v?'selected':''}>${esc(a)}</option>`).join('');
 const fmtToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const TODAY=fmtToday();
+const dateStr=v=>{if(!v)return '';const s=String(v);return s.length>=10?s.slice(0,10):s;};
+function uid(){return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function getProg(o){const n=clampQty(o.qty);const max=stagesFor(o).length;o.pr=(o.pr||[]).slice(0,n).map(v=>Math.min(Math.max(0,v|0),max));while(o.pr.length<n)o.pr.push(0);return o.pr;}
 function find(id){return D.find(o=>o.id===id);}
 
@@ -253,18 +289,18 @@ $('filter').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('filter').que
 function render(){
   const q=$('search').value.trim().toLowerCase();
   let list=D.slice();
-  if(curFilter==='all')list=list.filter(o=>o.st!==FINISHED);       // main board excludes delivered/finished
-  else list=list.filter(o=>o.st===curFilter);                       // exact-status filters (incl. Delivered)
-  if(q)list=list.filter(o=>[o.id,o.loc,o.sz,o.no].join(' ').toLowerCase().includes(q));
+  if(curFilter==='all')list=list.filter(o=>o.st!==FINISHED);
+  else list=list.filter(o=>o.st===curFilter);
+  if(q)list=list.filter(o=>[o.tid,o.loc,o.sz,o.no].join(' ').toLowerCase().includes(q));
   const label=curFilter==='Completed'?'delivered':'orders';
-  $('count').innerHTML=list.length+' '+label+' &nbsp;•&nbsp; <b>● synced</b>';
+  $('count').textContent=list.length+' '+label;
   let h='',z=0;
   list.forEach(o=>{
     const open=expanded.has(o.id),st=STATUS[o.st]||STATUS.New,lt=LOAD[o.ld]||LOAD['Front Load'];
     const zc=(z++%2)?' zebra':'';
     const over=o.du&&o.du<TODAY&&o.st!=='Completed';
-    h+=`<tr class="r${zc}${o.prio?' prio':''}">
-      <td class="c-tkt"><div class="tktwrap"><span class="grip">⠿</span><span class="tkt${open?' open':''}" onclick="toggleExpand('${o.id}')">${esc(o.id)}<span class="cv"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M6 9l6 6 6-6"/></svg></span></span></div></td>
+    h+=`<tr class="r${zc}${o.prio?' prio':''}" data-rowid="${o.id}">
+      <td class="c-tkt"><div class="tktwrap"><span class="grip">⠿</span><span class="tkt${open?' open':''}" onclick="toggleExpand('${o.id}')">${esc(o.tid||o.id)}<span class="cv"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M6 9l6 6 6-6"/></svg></span></span></div></td>
       <td class="loc" data-label="Location"><div class="nm">${esc(o.loc)}</div></td>
       <td class="gdiv" data-label="Status"><span class="pill ${st.c}" onclick="openPop(event,'${o.id}','st')">${o.st==='In-Progress'?'In-Prog':esc(o.st)}<span class="c">▼</span></span></td>
       <td class="sch-cell" data-label="Schedule"><div class="sched">
@@ -281,9 +317,9 @@ function render(){
       <td class="gdiv" data-label="QR"><span class="ib qr" onclick="openQR('${o.id}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7M17 21h.01"/></svg></span></td>
       <td data-label="Actions"><div class="acts">
         <span class="ib flag${o.prio?' on':''}" onclick="togglePrio('${o.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="${o.prio?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M5 22V4M5 4h11l-2.5 4 2.5 4H5"/></svg></span>
-        <span class="ib edit" onclick="alert('Demo: edit form would open.')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <span class="ib edit" onclick="openForm('${o.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
         <span class="ib mail" onclick="emailWO('${o.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg></span>
-        <span class="ib del" onclick="alert('Demo: delete')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></span>
+        <span class="ib del" onclick="delOrder('${o.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></span>
       </div></td></tr>`;
     if(open){
       const stages=stagesFor(o),N=stages.length,prog=getProg(o);let pr='';
@@ -295,60 +331,142 @@ function render(){
   $('b').innerHTML=h||'<tr><td colspan="13" style="padding:30px;text-align:center;color:#9aa3af">No containers in this view.</td></tr>';
 }
 function toggleExpand(id){expanded.has(id)?expanded.delete(id):expanded.add(id);render();}
-function setField(id,f,v){const o=find(id);if(o){o[f]=v;render();}}
-function setQty(id,el){const o=find(id);if(!o)return;o.qty=clampQty(el.value);getProg(o);render();}
-function setStage(id,ci,stage){const o=find(id);if(!o)return;const a=getProg(o);a[ci]=(a[ci]===stage)?stage-1:stage;if(a[ci]<0)a[ci]=0;render();}
-function togglePrio(id){const o=find(id);if(o){o.prio=!o.prio;render();}}
+function setField(id,f,v){const o=find(id);if(o){o[f]=v;render();scheduleSave();}}
+function setQty(id,el){const o=find(id);if(!o)return;o.qty=clampQty(el.value);getProg(o);render();scheduleSave();}
+function setStage(id,ci,stage){const o=find(id);if(!o)return;const a=getProg(o);a[ci]=(a[ci]===stage)?stage-1:stage;if(a[ci]<0)a[ci]=0;render();scheduleSave();}
+function togglePrio(id){const o=find(id);if(o){o.prio=!o.prio;render();scheduleSave();}}
+function delOrder(id){const o=find(id);if(!o)return;if(!confirm('Delete ticket '+(o.tid||id)+'?'))return;D=D.filter(x=>x.id!==id);expanded.delete(id);render();scheduleSave();}
 function emailWO(id){const o=find(id);if(!o)return;
-  const subj=`Container Work Order — ${o.loc||o.id} (Ticket ${o.id})`;
+  const tk=o.tid||o.id;
+  const subj=`Container Work Order — ${o.loc||tk} (Ticket ${tk})`;
   const body=[
-    `Ticket: ${o.id}`,
-    `Location: ${o.loc||''}`,
-    `Status: ${o.st}`,
-    `Qty: ${o.qty}`,
-    `Build: ${o.bd}`,
-    `Container Size: ${o.sz}`,
-    `Load Style: ${o.ld}`,
-    `Lids: ${o.li}`,
-    `Casters: ${o.ca}`,
-    o.pl?`Order Placed: ${o.pl}`:'',
-    o.du?`Projected Completion: ${o.du}`:'',
-    o.no?`Notes: ${o.no}`:''
+    `Ticket: ${tk}`,`Location: ${o.loc||''}`,o.addr?`Address: ${o.addr}`:'',o.ph?`Phone: ${o.ph}`:'',
+    `Status: ${o.st}`,`Qty: ${o.qty}`,`Build: ${o.bd}`,`Container Size: ${o.sz}`,`Load Style: ${o.ld}`,`Lids: ${o.li}`,`Casters: ${o.ca}`,
+    o.pl?`Order Placed: ${o.pl}`:'',o.du?`Projected Completion: ${o.du}`:'',o.no?`Notes: ${o.no}`:''
   ].filter(Boolean).join('\n');
-  window.location.href='mailto:don@gtsupplies.com?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+  window.location.href='mailto:'+CONFIG.EMAIL_TO+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
 }
 let pop=null;
 function openPop(e,id,field){e.stopPropagation();closePop();const map=field==='st'?STATUS:LOAD;pop=document.createElement('div');pop.className='pop';
-  Object.keys(map).forEach(k=>{const b=document.createElement('button');b.innerHTML=`<span class="dot" style="background:${map[k].d}"></span>${k}`;b.onclick=()=>{find(id)[field]=k;closePop();render();};pop.appendChild(b);});
+  Object.keys(map).forEach(k=>{const b=document.createElement('button');b.innerHTML=`<span class="dot" style="background:${map[k].d}"></span>${k}`;b.onclick=()=>{const o=find(id);if(o){o[field]=k;}closePop();render();scheduleSave();};pop.appendChild(b);});
   document.body.appendChild(pop);const r=e.currentTarget.getBoundingClientRect();pop.style.top=(r.bottom+5)+'px';pop.style.left=Math.min(r.left,innerWidth-pop.offsetWidth-12)+'px';}
 function closePop(){if(pop){pop.remove();pop=null;}}
 document.addEventListener('click',closePop);
-/* QR */
-const qurl=(o,ci)=>BASE+'?ticket='+encodeURIComponent(o.id)+'&c='+ci;
+
+/* ===== New / Edit form ===== */
+function fillFormSelects(){if(formFilled)return;formFilled=true;
+  $('f_st').innerHTML=opt(Object.keys(STATUS));$('f_bd').innerHTML=opt(BUILDS);$('f_sz').innerHTML=opt(CTYPES);
+  $('f_ld').innerHTML=opt(Object.keys(LOAD));$('f_li').innerHTML=opt(LIDS);$('f_ca').innerHTML=opt(CASTERS);}
+function openForm(id){fillFormSelects();editId=id||null;$('formTitle').textContent=id?'Edit Order':'New Order';
+  const o=id?find(id):null;
+  $('f_id').value=o?(o.tid||''):'';$('f_loc').value=o?o.loc:'';$('f_addr').value=o?(o.addr||''):'';$('f_ph').value=o?(o.ph||''):'';
+  $('f_pl').value=o?(o.pl||''):'';$('f_du').value=o?(o.du||''):'';$('f_qty').value=o?o.qty:1;
+  $('f_st').value=o?o.st:'New';$('f_bd').value=o?o.bd:'New Container';$('f_sz').value=o?o.sz:'2 Yard';
+  $('f_ld').value=o?o.ld:'Front Load';$('f_li').value=o?o.li:'None';$('f_ca').value=o?o.ca:'None';
+  $('f_prio').checked=o?!!o.prio:false;$('f_no').value=o?o.no:'';
+  $('formModal').classList.add('open');}
+function closeForm(){$('formModal').classList.remove('open');}
+function saveForm(){
+  const loc=$('f_loc').value.trim();
+  if(!loc){alert('Location / Site is required.');return;}
+  const data={tid:$('f_id').value.trim(),loc:loc,addr:$('f_addr').value.trim(),ph:$('f_ph').value.trim(),
+    st:$('f_st').value,pl:$('f_pl').value,du:$('f_du').value,qty:clampQty($('f_qty').value),
+    bd:$('f_bd').value,sz:$('f_sz').value,ld:$('f_ld').value,li:$('f_li').value,ca:$('f_ca').value,
+    prio:$('f_prio').checked,no:$('f_no').value};
+  if(editId){const o=find(editId);if(o){Object.assign(o,data);getProg(o);}}
+  else{const o=Object.assign({id:uid(),createdAt:new Date().toISOString(),sort:D.length,pr:[]},data);getProg(o);D.push(o);expanded.add(o.id);}
+  closeForm();render();scheduleSave();}
+
+/* ===== QR ===== */
+const qurl=(o,ci)=>BASE+'?ticket='+encodeURIComponent(o.tid||o.id)+'&c='+ci;
 const doneList=(d,stages)=>d<=0?'Not started':stages.slice(0,d).join(', ');
-function openQR(id){const o=find(id);if(!o)return;qrId=id;$('qrT').textContent=o.loc||o.id;$('qrS').textContent=o.sz;
+function openQR(id){const o=find(id);if(!o)return;qrId=id;$('qrT').textContent=o.loc||o.tid||o.id;$('qrS').textContent=o.sz;
   const stages=stagesFor(o),N=stages.length;
   const g=$('qrG');g.innerHTML='';getProg(o).forEach((dn,i)=>{
     const cell=document.createElement('div');cell.className='qrcell';const q=document.createElement('div');q.className='qr';
     new QRCode(q,{text:qurl(o,i+1),width:140,height:140,correctLevel:QRCode.CorrectLevel.M});
     const pct=Math.round(dn/N*100);
-    const cap=document.createElement('div');cap.className='qrcap';cap.innerHTML=`${esc(o.loc||o.id)}<span class="qccont">Container #${i+1}</span><span class="sub"><b>${pct}% complete</b><span class="done">${dn<=0?'Not started':'Done: '+esc(doneList(dn,stages))}</span></span>`;
+    const cap=document.createElement('div');cap.className='qrcap';cap.innerHTML=`${esc(o.loc||o.tid||o.id)}<span class="qccont">Container #${i+1}</span><span class="sub"><b>${pct}% complete</b><span class="done">${dn<=0?'Not started':'Done: '+esc(doneList(dn,stages))}</span></span>`;
     const btn=document.createElement('button');btn.className='qrprint';btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print`;
     btn.onclick=()=>printLabel(o.id,i+1);cell.append(q,cap,btn);g.appendChild(cell);});
   $('qrModal').classList.add('open');}
 function closeQR(){$('qrModal').classList.remove('open');}
 function mkLabel(o,ci){const w=document.createElement('div');w.className='label';const qd=document.createElement('div');qd.className='lqr';
   new QRCode(qd,{text:qurl(o,ci),width:130,height:130,correctLevel:QRCode.CorrectLevel.M});
-  const t=document.createElement('div');t.className='lt';t.textContent=o.loc||o.id;
+  const t=document.createElement('div');t.className='lt';t.textContent=o.loc||o.tid||o.id;
   const c=document.createElement('div');c.className='lc';c.textContent='Container #'+ci;
-  const s=document.createElement('div');s.className='ls';s.textContent='Ticket '+o.id+' • '+o.sz;w.append(qd,t,c,s);return w;}
+  const s=document.createElement('div');s.className='ls';s.textContent='Ticket '+(o.tid||o.id)+' • '+o.sz;w.append(qd,t,c,s);return w;}
 function printLabel(id,ci){const o=find(id);const box=$('printLabels');box.innerHTML='';box.appendChild(mkLabel(o,ci));setTimeout(()=>print(),200);}
 function printTicket(){const o=find(qrId);const box=$('printLabels');box.innerHTML='';for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i));setTimeout(()=>print(),300);}
 function printAll(){const box=$('printLabels');box.innerHTML='';D.forEach(o=>{for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i));});setTimeout(()=>print(),350);}
+
+/* ===== sticky header height ===== */
 function syncHeaderH(){const h=document.getElementById('appHeader');if(h)document.documentElement.style.setProperty('--hh',h.offsetHeight+'px');}
 window.addEventListener('resize',syncHeaderH);window.addEventListener('load',syncHeaderH);setTimeout(syncHeaderH,300);
+
+/* ===== Google Sheet sync ===== */
+function setSync(s){const el=$('sync');if(!el)return;
+  if(!CONFIG.API_URL){el.textContent='● local only';el.style.color='#67707c';return;}
+  const m={ok:['● synced','#16a34a'],saving:['● saving…','#b45309'],loading:['● loading…','#b45309'],offline:['● offline','#dc2626']};
+  const v=m[s]||m.ok;el.textContent=v[0];el.style.color=v[1];}
+function parseProg(v){if(Array.isArray(v))return v.map(x=>x|0);if(v==null||v==='')return [];try{const a=JSON.parse(v);return Array.isArray(a)?a.map(x=>x|0):[];}catch(e){return [];}}
+function truthy(v){return v===true||v===1||v==='1'||String(v).toUpperCase()==='TRUE';}
+function orderFromRow(r){return{
+  id:r.id||uid(),tid:String(r.ticketId==null?'':r.ticketId),st:r.status||'New',loc:r.siteName||'',
+  addr:r.address||'',ph:r.phone==null?'':String(r.phone),bd:r.category||'New Container',ld:r.loadType||'Front Load',
+  sz:r.containerType||'2 Yard',li:r.lids||'None',no:r.notes==null?'':String(r.notes),qty:clampQty(r.qty||1),
+  ca:r.casters||'None',prio:truthy(r.priority),sort:(r.sort===''||r.sort==null)?0:(Number(r.sort)||0),
+  pr:parseProg(r.progress),pl:dateStr(r.orderPlaced),du:dateStr(r.projectedDone),createdAt:r.createdAt||''};}
+function rowFromOrder(o){return{
+  id:o.id,ticketId:o.tid||'',status:o.st||'New',siteName:o.loc||'',address:o.addr||'',phone:o.ph||'',
+  category:o.bd||'New Container',loadType:o.ld||'Front Load',containerType:o.sz||'2 Yard',lids:o.li||'None',
+  notes:o.no||'',createdAt:o.createdAt||'',updatedAt:'',qty:o.qty||1,casters:o.ca||'None',priority:o.prio?1:'',
+  sort:(o.sort!=null?o.sort:0),progress:JSON.stringify(o.pr||[]),orderPlaced:o.pl||'',projectedDone:o.du||''};}
+function jsonp(url){return new Promise((res,rej)=>{
+  const cb='__wrs_cb_'+Math.random().toString(36).slice(2);let done=false;
+  const s=document.createElement('script');
+  window[cb]=d=>{done=true;cleanup();res(d);};
+  function cleanup(){try{delete window[cb];}catch(e){window[cb]=undefined;}if(s.parentNode)s.remove();}
+  s.onerror=()=>{if(!done){cleanup();rej(new Error('jsonp error'));}};
+  s.src=url+(url.indexOf('?')>=0?'&':'?')+'callback='+cb+'&_t='+Date.now();
+  document.body.appendChild(s);
+  setTimeout(()=>{if(!done){cleanup();rej(new Error('timeout'));}},14000);});}
+function isEditingNow(){
+  if($('formModal').classList.contains('open')||$('qrModal').classList.contains('open'))return true;
+  const ae=document.activeElement;return !!ae&&['TEXTAREA','SELECT','INPUT'].includes(ae.tagName);}
+function loadRemote(force){
+  if(!CONFIG.API_URL){setSync();render();return Promise.resolve();}
+  if(!force&&isEditingNow())return Promise.resolve();
+  setSync('loading');
+  return jsonp(CONFIG.API_URL).then(d=>{
+    if(d&&d.ok&&Array.isArray(d.orders)){
+      D=d.orders.map(orderFromRow).sort((a,b)=>a.sort-b.sort);
+      render();setSync('ok');
+      if(!deepDone){deepDone=true;handleDeepLink();}
+    }else setSync('offline');
+  }).catch(()=>setSync('offline'));}
+function saveAll(){
+  if(!CONFIG.API_URL)return;
+  D.forEach((o,i)=>o.sort=i);
+  setSync('saving');
+  fetch(CONFIG.API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({action:'saveAll',orders:D.map(rowFromOrder)})})
+    .then(()=>setSync('ok')).catch(()=>setSync('offline'));}
+function scheduleSave(){if(!CONFIG.API_URL)return;setSync('saving');clearTimeout(saveTimer);saveTimer=setTimeout(saveAll,700);}
+
+/* ===== deep link (QR scan opens the ticket) ===== */
+function handleDeepLink(){
+  const p=new URLSearchParams(location.search);const t=p.get('ticket');if(!t)return;
+  const o=D.find(x=>String(x.tid).toLowerCase()===t.toLowerCase());if(!o)return;
+  $('search').value='';expanded.add(o.id);render();
+  setTimeout(()=>{const row=document.querySelector('[data-rowid="'+o.id+'"]');
+    if(row){row.classList.add('flash');row.scrollIntoView({behavior:'smooth',block:'center'});}},120);}
+
+/* ===== init ===== */
 syncHeaderH();
-render();
+setSync('loading');
+loadRemote(true);
+setInterval(()=>loadRemote(false),30000);
 </script>
 </body>
 </html>
