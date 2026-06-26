@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{
+  --hh:64px;
   --steel:#1c2128;--line:#dde2e9;--line2:#eef1f5;--board:#eef1f4;--card:#fff;--ink:#1c2128;--muted:#6b7280;--amber:#f5a623;
   --st-pick-b:#fef3c7;--st-pick-t:#b45309;--st-new-b:#dbeafe;--st-new-t:#1d4ed8;--st-prog-b:#ede9fe;--st-prog-t:#6d28d9;
   --st-comp-b:#dcfce7;--st-comp-t:#15803d;--st-ready-b:#cffafe;--st-ready-t:#0e7490;
@@ -35,10 +36,10 @@ header{background:linear-gradient(108deg,#171c23,#212b39 60%,#2b2533);color:#fff
 .count{margin-left:auto;font-family:'Oswald';font-size:13px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
 .count b{color:#15803d}
 .wrap{padding:0 16px 50px}
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(16,22,30,.07)}
-.scroll{overflow-x:auto}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 3px rgba(16,22,30,.07)}
+.scroll{overflow:visible}
 table{border-collapse:collapse;width:100%;min-width:1220px}
-thead th{position:sticky;top:60px;background:linear-gradient(180deg,#2d3744,#222a34);color:#e2e8f0;font-family:'Oswald';font-weight:500;font-size:10.5px;letter-spacing:.8px;text-transform:uppercase;text-align:center;padding:9px 9px;white-space:nowrap;border-bottom:2px solid var(--amber)}
+thead th{position:sticky;top:var(--hh,64px);z-index:20;background:linear-gradient(180deg,#2d3744,#222a34);color:#e2e8f0;font-family:'Oswald';font-weight:500;font-size:10.5px;letter-spacing:.8px;text-transform:uppercase;text-align:center;padding:9px 9px;white-space:nowrap;border-bottom:2px solid var(--amber)}
 thead th small{display:block;font-size:8.5px;color:#9aa9bb;letter-spacing:.3px;font-weight:400}
 .gdiv{border-left:2px solid #3a4655}
 tbody td.gdiv{border-left:2px solid #e6eaf0}
@@ -172,7 +173,7 @@ tbody tr.prio{background:#fff5f5}
 </style>
 </head>
 <body>
-<header>
+<header id="appHeader">
   <div class="mark">WRS</div>
   <div class="htitle"><h1>Containers</h1><small>Fab &amp; Rebuild Tracker</small></div>
   <span class="tag">Compact redesign — interactive mockup (local only)</span>
@@ -325,6 +326,9 @@ function mkLabel(o,ci){const w=document.createElement('div');w.className='label'
 function printLabel(id,ci){const o=find(id);const box=$('printLabels');box.innerHTML='';box.appendChild(mkLabel(o,ci));setTimeout(()=>print(),200);}
 function printTicket(){const o=find(qrId);const box=$('printLabels');box.innerHTML='';for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i));setTimeout(()=>print(),300);}
 function printAll(){const box=$('printLabels');box.innerHTML='';D.forEach(o=>{for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i));});setTimeout(()=>print(),350);}
+function syncHeaderH(){const h=document.getElementById('appHeader');if(h)document.documentElement.style.setProperty('--hh',h.offsetHeight+'px');}
+window.addEventListener('resize',syncHeaderH);window.addEventListener('load',syncHeaderH);setTimeout(syncHeaderH,300);
+syncHeaderH();
 render();
 </script>
 </body>
