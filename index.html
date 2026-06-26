@@ -73,7 +73,7 @@ header .spacer{flex:1}
 .wrap{padding:0 22px 60px}
 .tablecard{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
 .scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:1320px}
+table{border-collapse:collapse;width:100%;min-width:1500px}
 thead th{
   background:linear-gradient(180deg,#2d3744,#222a34);color:#e2e8f0;font-family:'Oswald';font-weight:500;font-size:11.5px;
   letter-spacing:1px;text-transform:uppercase;text-align:center;padding:12px 13px;white-space:nowrap;
@@ -113,6 +113,9 @@ select.cell{
 }
 select.cell:focus{outline:2px solid var(--amber);border-color:var(--amber)}
 select.cell.wide{max-width:215px}
+.datein{font-family:'Barlow';font-size:13px;font-weight:500;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:#fbfcfd;color:var(--ink);cursor:pointer}
+.datein:focus{outline:2px solid var(--amber);border-color:var(--amber)}
+thead th.th-wrap{white-space:normal;line-height:1.18;min-width:96px}
 .cat-new{color:var(--st-comp-t);font-weight:600}
 .cat-rebuilt{color:var(--st-prog-t);font-weight:600}
 input.qtyin{width:54px;text-align:center;font-family:'Barlow';font-size:14px;font-weight:600;padding:6px 6px;border:1px solid var(--line);border-radius:7px;background:#fbfcfd;color:var(--ink)}
@@ -220,6 +223,7 @@ tbody tr.prio td:first-child{box-shadow:inset 4px 0 0 #dc2626}
 .qrcell .qr{display:block;line-height:0}
 .qrcap{font-family:'Oswald';font-weight:700;font-size:14px;color:var(--steel);margin-top:9px;letter-spacing:.4px}
 .qrcap span{display:block;font-family:'Barlow';font-weight:500;font-size:11px;color:var(--muted);margin-top:2px}
+.qrcap .qccont{font-family:'Oswald';font-weight:700;font-size:12px;color:#b91c1c;letter-spacing:.5px;margin-top:1px}
 .qrprint{margin-top:10px;width:100%;border:1px solid var(--line);background:#fff;border-radius:7px;padding:8px;cursor:pointer;
   font-family:'Oswald';font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:11px;color:var(--steel);
   display:flex;align-items:center;justify-content:center;gap:6px;transition:.12s}
@@ -238,8 +242,9 @@ tbody tr.prio td:first-child{box-shadow:inset 4px 0 0 #dc2626}
     justify-content:center;padding:8px;page-break-inside:avoid;box-sizing:border-box
   }
   .label .lqr{margin-bottom:6px}
-  .label .lt{font-family:'Oswald';font-weight:700;font-size:18px;letter-spacing:1px;text-align:center}
-  .label .ls{font-size:10px;color:#333;text-align:center;line-height:1.25;margin-top:2px}
+  .label .lt{font-family:'Oswald';font-weight:700;font-size:15px;text-align:center;line-height:1.1}
+  .label .lc{font-family:'Oswald';font-weight:700;font-size:13px;color:#b91c1c;text-align:center;line-height:1.1;margin-top:2px}
+  .label .ls{font-size:9.5px;color:#333;text-align:center;line-height:1.25;margin-top:2px}
 }
 @media(max-width:760px){
   .wrap{padding:0 10px 48px}
@@ -288,6 +293,7 @@ tbody tr.prio td:first-child{box-shadow:inset 4px 0 0 #dc2626}
   .notes-cell textarea{width:100%;min-height:54px;font-size:14px}
 
   select.cell,select.cell.wide{max-width:62%;font-size:15px;padding:9px 10px}
+  .datein{font-size:15px;padding:9px 10px}
   .qtyin{width:66px;height:40px;font-size:16px}
   .pill{font-size:12px;padding:8px 13px}
 
@@ -357,7 +363,7 @@ tbody tr.prio td:first-child{box-shadow:inset 4px 0 0 #dc2626}
     <div class="scroll">
       <table>
         <thead><tr>
-          <th>Ticket ID</th><th>Location</th><th>Status</th><th>Qty</th><th>Build</th>
+          <th>Ticket ID</th><th>Location</th><th>Status</th><th class="th-wrap">Order Placed</th><th class="th-wrap">Projected Completion</th><th>Qty</th><th>Build</th>
           <th>Container Size</th><th>Load Style</th><th>Lids Type</th><th>Casters</th><th>Notes</th><th>QR</th><th></th>
         </tr></thead>
         <tbody id="rows"></tbody>
@@ -383,6 +389,8 @@ tbody tr.prio td:first-child{box-shadow:inset 4px 0 0 #dc2626}
       <div class="field full"><label>Site Name</label><input id="f_site" placeholder="Site / customer name"></div>
       <div class="field full"><label>Address</label><input id="f_addr" placeholder="Street, City, ST ZIP"></div>
       <div class="field"><label>Phone</label><input id="f_phone" placeholder="(000) 000-0000"></div>
+      <div class="field"><label>Order Placed</label><input id="f_placed" type="date"></div>
+      <div class="field"><label>Projected Completion</label><input id="f_proj" type="date"></div>
       <div class="field"><label>Build Type</label>
         <select id="f_cat"><option>New Container</option><option>Rebuilt Container</option></select></div>
       <div class="field"><label>Load Type</label>
@@ -524,6 +532,8 @@ function render(){
         ${o.phone?`<div class="ph"><a href="tel:${esc(o.phone)}">${esc(o.phone)}</a></div>`:''}
       </td>
       <td data-label="Status"><span class="pill ${st.c}" onclick="openPop(event,'${o.id}','status')">${esc(o.status)}<span class="car">▼</span></span></td>
+      <td data-label="Order Placed"><input class="datein" type="date" value="${esc(o.orderPlaced)}" onchange="upd('${o.id}','orderPlaced',this.value)"></td>
+      <td data-label="Projected Completion"><input class="datein" type="date" value="${esc(o.projectedDone)}" onchange="upd('${o.id}','projectedDone',this.value)"></td>
       <td data-label="Qty"><input class="qtyin" type="number" min="1" max="10" value="${o.qty||1}" onchange="updQty('${o.id}',this)"></td>
       <td data-label="Build"><select class="cell ${o.category==='New Container'?'cat-new':'cat-rebuilt'}" onchange="upd('${o.id}','category',this.value)">${opt(['New Container','Rebuilt Container'],o.category)}</select></td>
       <td data-label="Container"><select class="cell" onchange="upd('${o.id}','containerType',this.value)">${opt(CONTAINER_TYPES,o.containerType)}</select></td>
@@ -553,7 +563,7 @@ function render(){
     tb.appendChild(tr);
     if(open){
       const dtr=document.createElement('tr'); dtr.className='detail-row'; dtr.id='detail-'+o.id;
-      const dtd=document.createElement('td'); dtd.colSpan=12; dtd.innerHTML=detailHTML(o);
+      const dtd=document.createElement('td'); dtd.colSpan=14; dtd.innerHTML=detailHTML(o);
       dtr.appendChild(dtd); tb.appendChild(dtr);
     }
   }catch(err){console.error('row render failed',o&&o.id,err);} });
@@ -669,18 +679,19 @@ document.addEventListener('click',closePop);
 function openNew(){editingId=null;document.getElementById('formTitle').textContent='New Order';
   ['f_ticket','f_site','f_addr','f_phone','f_notes'].forEach(i=>document.getElementById(i).value='');
   f('f_status','New');f('f_cat','New Container');f('f_load','Front Load');f('f_type','2 Yard');f('f_lids','None');f('f_qty',1);f('f_casters','None');
+  f('f_placed',todayStr());f('f_proj','');
   show('formModal');document.getElementById('f_ticket').focus();}
 function openEdit(id){const o=orders.find(x=>x.id===id);if(!o)return;editingId=id;
   document.getElementById('formTitle').textContent='Edit Order';
   f('f_ticket',o.ticketId);f('f_status',o.status);f('f_site',o.siteName);f('f_addr',o.address);
   f('f_phone',o.phone);f('f_cat',o.category);f('f_load',o.loadType);f('f_type',o.containerType);
-  f('f_lids',o.lids);f('f_qty',o.qty||1);f('f_casters',o.casters||'None');f('f_notes',o.notes);show('formModal');}
+  f('f_lids',o.lids);f('f_qty',o.qty||1);f('f_casters',o.casters||'None');f('f_placed',o.orderPlaced||'');f('f_proj',o.projectedDone||'');f('f_notes',o.notes);show('formModal');}
 function f(id,v){document.getElementById(id).value=v}
 function val(id){return document.getElementById(id).value.trim()}
 function saveForm(){
   const data={ticketId:val('f_ticket'),status:val('f_status'),siteName:val('f_site'),address:val('f_addr'),
     phone:val('f_phone'),category:val('f_cat'),loadType:val('f_load'),containerType:val('f_type'),
-    lids:val('f_lids'),qty:clampQty(val('f_qty')),casters:val('f_casters'),notes:val('f_notes')};
+    lids:val('f_lids'),qty:clampQty(val('f_qty')),casters:val('f_casters'),orderPlaced:val('f_placed'),projectedDone:val('f_proj'),notes:val('f_notes')};
   if(!data.ticketId){alert('Ticket ID is required.');return}
   let saved;
   if(editingId){saved=orders.find(x=>x.id===editingId);Object.assign(saved,data)}
@@ -707,7 +718,7 @@ function openQR(id){const o=orders.find(x=>x.id===id);if(!o)return;qrId=id;
     const q=document.createElement('div');q.className='qr';
     new QRCode(q,{text:qrUrl(o,i+1),width:150,height:150,correctLevel:QRCode.CorrectLevel.M});
     const cap=document.createElement('div');cap.className='qrcap';
-    cap.innerHTML=`Container #${i+1}<span>${Math.round(done/STAGES.length*100)}% • ${esc(stageLabel(done))}</span>`;
+    cap.innerHTML=`${esc(o.siteName||o.ticketId||'—')}<span class="qccont">Container #${i+1}</span><span>${Math.round(done/STAGES.length*100)}% • ${esc(stageLabel(done))}</span>`;
     const btn=document.createElement('button');btn.className='qrprint';
     btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print`;
     btn.onclick=()=>printLabel(o.id,i+1);
@@ -725,10 +736,11 @@ function makeLabel(o,ci){
   const wrap=document.createElement('div');wrap.className='label';
   const qd=document.createElement('div');qd.className='lqr';
   new QRCode(qd,{text:qrUrl(o,ci),width:130,height:130,correctLevel:QRCode.CorrectLevel.M});
-  const t=document.createElement('div');t.className='lt';t.textContent=(o.ticketId||'—')+' · #'+ci;
+  const t=document.createElement('div');t.className='lt';t.textContent=o.siteName||o.ticketId||'—';
+  const c=document.createElement('div');c.className='lc';c.textContent='Container #'+ci;
   const s=document.createElement('div');s.className='ls';
-  s.textContent=[o.containerType,o.category,o.siteName].filter(Boolean).join(' • ');
-  wrap.append(qd,t,s);return wrap;
+  s.textContent=['Ticket '+(o.ticketId||'—'),o.containerType].filter(Boolean).join(' • ');
+  wrap.append(qd,t,c,s);return wrap;
 }
 function printOne(){const o=orders.find(x=>x.id===qrId);if(!o)return;
   const box=document.getElementById('printLabels');box.innerHTML='';
@@ -745,7 +757,7 @@ function emailNotes(id){
   if(!o.notes||!o.notes.trim()){alert('No notes to send for this ticket.');return}
   const subject=`Container ${o.ticketId||''} — ${o.containerType||''} (${o.category||''})`.trim();
   const body=`Ticket: ${o.ticketId||'—'}\nStatus: ${o.status}\nSite: ${o.siteName||'—'}\nAddress: ${o.address||'—'}\n`
-    +`Phone: ${o.phone||'—'}\nQty: ${o.qty||1}\nBuild: ${o.category} / ${o.loadType} / ${o.containerType} / Lids: ${o.lids}\nCasters: ${o.casters||'None'}\n\nNotes:\n${o.notes}`;
+    +`Phone: ${o.phone||'—'}\nOrder Placed: ${o.orderPlaced||'—'}\nProjected Completion: ${o.projectedDone||'—'}\nQty: ${o.qty||1}\nBuild: ${o.category} / ${o.loadType} / ${o.containerType} / Lids: ${o.lids}\nCasters: ${o.casters||'None'}\n\nNotes:\n${o.notes}`;
   location.href=`mailto:${CONFIG.EMAIL_TO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -787,6 +799,8 @@ function pushUpsert(o){pushWrite({action:'upsert',order:o});}
 function pushDelete(id){pushWrite({action:'delete',id});}
 let _recon=null;
 function scheduleReconcile(){clearTimeout(_recon);_recon=setTimeout(()=>{if(!isEditingNow())fetchRemote();},2500);}
+function dateStr(v){if(v==null)return '';const m=String(v).match(/\d{4}-\d{2}-\d{2}/);return m?m[0]:'';}
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function normalize(o){
   let sv=(o.sort===''||o.sort==null)?NaN:Number(o.sort);
   if(isNaN(sv)){const c=Number(o.createdAt);sv=isNaN(c)?0:-c;}
@@ -797,6 +811,7 @@ function normalize(o){
   lids:o.lids||'None',qty:clampQty(o.qty),casters:o.casters||'None',notes:o.notes==null?'':String(o.notes),
   priority:o.priority===true||o.priority==='true'||o.priority==='TRUE'||o.priority===1,
   sort:sv,progress:typeof o.progress==='string'?o.progress:(o.progress?JSON.stringify(o.progress):''),
+  orderPlaced:dateStr(o.orderPlaced),projectedDone:dateStr(o.projectedDone),
   createdAt:o.createdAt||Date.now()};}
 function isEditingNow(){
   if(document.getElementById('formModal').classList.contains('open'))return true;
