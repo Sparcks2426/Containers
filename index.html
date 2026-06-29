@@ -183,6 +183,10 @@ tbody tr.prio{background:#fff5f5}
   .st{flex:1 0 30%;font-size:10.5px;padding:9px 4px}
   .pct{width:auto;min-width:42px}
 }
+.vtabs{display:flex;background:#fff;border:1px solid var(--line);border-radius:9px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.vtabs button{border:0;background:transparent;font-family:'Oswald';font-weight:600;font-size:12.5px;letter-spacing:.4px;text-transform:uppercase;padding:9px 15px;cursor:pointer;color:var(--muted);border-right:1px solid var(--line2);white-space:nowrap}
+.vtabs button:last-child{border-right:0}
+.vtabs button.active{background:var(--steel);color:#fff}
 .sync{font-family:'Oswald';font-size:12px;letter-spacing:.5px;text-transform:uppercase;margin-left:12px;color:#16a34a;white-space:nowrap}
 tbody tr.flash{animation:flash 2.2s ease}
 @keyframes flash{0%,35%{background:#fff7df}100%{background:transparent}}
@@ -197,7 +201,8 @@ tbody tr.flash{animation:flash 2.2s ease}
   <button class="hbtn g" onclick="printAll()">⎙ Print QR</button>
 </header>
 <div class="toolbar">
-  <button class="hbtn" onclick="openForm()">+ New Order</button>
+  <div class="vtabs" id="vtabs"><button class="active" data-v="orders">Work Orders</button><button data-v="stock">Stock</button></div>
+  <button class="hbtn" id="newBtn" onclick="newClick()">+ New Order</button>
   <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9aa3af" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="search" placeholder="Search ticket, site, container…" oninput="render()"></div>
   <div class="filter" id="filter">
     <button class="active" data-f="all">All</button>
@@ -211,12 +216,7 @@ tbody tr.flash{animation:flash 2.2s ease}
 </div>
 <div class="wrap"><div class="card"><div class="scroll">
 <table>
-<thead><tr>
-  <th>Ticket</th><th>Location</th>
-  <th class="gdiv">Status</th><th class="sch-cell">Schedule<small>placed / due</small></th>
-  <th class="gdiv">Qty</th><th>Build</th><th>Size</th><th>Load</th><th>Lids</th><th>Casters</th>
-  <th class="gdiv">Notes</th><th class="gdiv">QR</th><th></th>
-</tr></thead>
+<thead><tr id="thr"></tr></thead>
 <tbody id="b"></tbody>
 </table>
 </div>
@@ -248,6 +248,20 @@ tbody tr.flash{animation:flash 2.2s ease}
   </div>
   <div class="mfoot"><button class="btn sec" onclick="closeForm()">Cancel</button><button class="btn primary" onclick="saveForm()">Save Order</button></div>
 </div></div>
+<div class="overlay" id="stockModal"><div class="modal">
+  <h2><span id="stockTitle">New Stock Container</span><span class="x" onclick="closeStockForm()">&times;</span></h2>
+  <div class="form">
+    <div class="fld full"><label>Customer Location</label><input id="s_loc" placeholder="Location name"></div>
+    <div class="fld"><label>Build</label><select id="s_bd"></select></div>
+    <div class="fld"><label>Qty</label><input type="number" min="1" max="10" id="s_qty" value="1"></div>
+    <div class="fld"><label>Container Size</label><select id="s_sz"></select></div>
+    <div class="fld"><label>Load Style</label><select id="s_ld"></select></div>
+    <div class="fld"><label>Lids</label><select id="s_li"></select></div>
+    <div class="fld"><label>Casters</label><select id="s_ca"></select></div>
+    <div class="fld full"><label>Notes</label><textarea id="s_no" placeholder="Notes…"></textarea></div>
+  </div>
+  <div class="mfoot"><button class="btn sec" onclick="closeStockForm()">Cancel</button><button class="btn primary" onclick="stSaveForm()">Save Stock</button></div>
+</div></div>
 <div class="print-root"><div class="labels" id="printLabels"></div></div>
 
 <script>
@@ -261,18 +275,24 @@ const BASE=CONFIG.BASE_URL;
 const SIZES=['1','1.5','2','2.33','2.34','3','4','6','8'];
 const CTYPES=[];SIZES.forEach(s=>{CTYPES.push(s+' Yard',s+' Yard Slant');if(s==='2')CTYPES.push('2 Yard Compactor Style');});
 const CASTERS=['None','Standard 6" x4 Swivel','Standard 6" 2x Swivel 2x Rigid','Cushion 6"','Cushion 8"','Steel Poly 6" Rigid','Steel Poly 6" Swivel'];
-const LIDS=['None','Plastic','Steel'];const BUILDS=['New Container','Rebuilt Container'];
+const LIDS=['None','Plastic','Steel'];const BUILDS=['New Container','Rebuilt Container'];const LOADS=['Front Load','Rear Load'];
 const STAGES_NEW=['Core','Full Weld Core','Pockets','Pads/Casters','Paint','Lids'];
 const STAGES_REB=['Removed Bottom','Installed Bottom - Sides','Pads - Casters','Paint'];
 const stagesFor=o=>(o&&o.bd==='Rebuilt Container')?STAGES_REB:STAGES_NEW;
 const SHORT={'Core':'Core','Full Weld Core':'Full Weld','Pockets':'Pockets','Pads/Casters':'Pads/Cast','Paint':'Paint','Lids':'Lids','Removed Bottom':'Rem. Bottom','Installed Bottom - Sides':'Btm + Sides','Pads - Casters':'Pads/Cast'};
 const STATUS={'Pick Up':{c:'p-pick',d:'#b45309'},'New':{c:'p-new',d:'#1d4ed8'},'In-Progress':{c:'p-prog',d:'#6d28d9'},'Completed':{c:'p-comp',d:'#15803d'},'Ready for Delivery':{c:'p-ready',d:'#0e7490'}};
 const LOAD={'Front Load':{c:'p-front',d:'#0369a1'},'Rear Load':{c:'p-rear',d:'#9a3412'}};
-const FINISHED='Completed'; // pulled out of the main board into the Delivered filter
+const FINISHED='Completed';
+const ORDERS_HEAD=`<th>Ticket</th><th>Location</th><th class="gdiv">Status</th><th class="sch-cell">Schedule<small>placed / due</small></th><th class="gdiv">Qty</th><th>Build</th><th>Size</th><th>Load</th><th>Lids</th><th>Casters</th><th class="gdiv">Notes</th><th class="gdiv">QR</th><th></th>`;
+const STOCK_HEAD=`<th></th><th>Customer Location</th><th class="gdiv">Build</th><th>Size</th><th>Load</th><th>Lids</th><th>Casters</th><th class="gdiv">Qty</th><th>Notes</th><th class="gdiv">QR</th><th></th>`;
+const SVG_QR='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7M17 21h.01"/></svg>';
+const SVG_EDIT='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+const SVG_DEL='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>';
+const SVG_CARET='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M6 9l6 6 6-6"/></svg>';
 
-let D=[];
-const expanded=new Set();
-let curFilter='all',qrId=null,editId=null,saveTimer=null,formFilled=false,deepDone=false;
+let D=[],S=[];
+const expanded=new Set(),expS=new Set();
+let view='orders',curFilter='all',qrId=null,qrKind='',editId=null,editIdS=null,deepDone=false,formFilled=false,stockFilled=false;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clampQty=v=>{v=parseInt(v,10);if(isNaN(v)||v<1)return 1;return v>10?10:v;};
@@ -283,10 +303,22 @@ const dateStr=v=>{if(!v)return '';const s=String(v);return s.length>=10?s.slice(
 function uid(){return 'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function getProg(o){const n=clampQty(o.qty);const max=stagesFor(o).length;o.pr=(o.pr||[]).slice(0,n).map(v=>Math.min(Math.max(0,v|0),max));while(o.pr.length<n)o.pr.push(0);return o.pr;}
 function find(id){return D.find(o=>o.id===id);}
+function findS(id){return S.find(o=>o.id===id);}
 
-$('filter').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('filter').querySelectorAll('button').forEach(x=>x.classList.remove('active'));b.classList.add('active');curFilter=b.dataset.f;render();});
+$('vtabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{view=b.dataset.v;$('search').value='';renderView();});
+$('filter').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('filter').querySelectorAll('button').forEach(x=>x.classList.remove('active'));b.classList.add('active');curFilter=b.dataset.f;renderOrders();});
+function newClick(){view==='stock'?stForm():openForm();}
+function render(){renderView();}
+function renderView(){
+  $('newBtn').textContent=view==='stock'?'+ New Stock':'+ New Order';
+  $('filter').style.display=view==='stock'?'none':'';
+  $('vtabs').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.v===view));
+  if(view==='stock')renderStock();else renderOrders();
+}
 
-function render(){
+/* ===== ORDERS board ===== */
+function renderOrders(){
+  $('thr').innerHTML=ORDERS_HEAD;
   const q=$('search').value.trim().toLowerCase();
   let list=D.slice();
   if(curFilter==='all')list=list.filter(o=>o.st!==FINISHED);
@@ -297,10 +329,9 @@ function render(){
   let h='',z=0;
   list.forEach(o=>{
     const open=expanded.has(o.id),st=STATUS[o.st]||STATUS.New,lt=LOAD[o.ld]||LOAD['Front Load'];
-    const zc=(z++%2)?' zebra':'';
-    const over=o.du&&o.du<TODAY&&o.st!=='Completed';
+    const zc=(z++%2)?' zebra':'';const over=o.du&&o.du<TODAY&&o.st!=='Completed';
     h+=`<tr class="r${zc}${o.prio?' prio':''}" data-rowid="${o.id}">
-      <td class="c-tkt"><div class="tktwrap"><span class="grip">⠿</span><span class="tkt${open?' open':''}" onclick="toggleExpand('${o.id}')">${esc(o.tid||o.id)}<span class="cv"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M6 9l6 6 6-6"/></svg></span></span></div></td>
+      <td class="c-tkt"><div class="tktwrap"><span class="grip">⠿</span><span class="tkt${open?' open':''}" onclick="toggleExpand('${o.id}')">${esc(o.tid||o.id)}<span class="cv">${SVG_CARET}</span></span></div></td>
       <td class="loc" data-label="Location"><div class="nm">${esc(o.loc)}</div></td>
       <td class="gdiv" data-label="Status"><span class="pill ${st.c}" onclick="openPop(event,'${o.id}','st')">${o.st==='In-Progress'?'In-Prog':esc(o.st)}<span class="c">▼</span></span></td>
       <td class="sch-cell" data-label="Schedule"><div class="sched">
@@ -314,49 +345,88 @@ function render(){
       <td data-label="Lids"><select class="cell" onchange="setField('${o.id}','li',this.value)">${opt(LIDS,o.li)}</select></td>
       <td data-label="Casters"><select class="cell wide" onchange="setField('${o.id}','ca',this.value)">${opt(CASTERS,o.ca)}</select></td>
       <td class="gdiv" data-label="Notes"><div class="notes"><textarea onchange="setField('${o.id}','no',this.value)" placeholder="Notes…">${esc(o.no)}</textarea></div></td>
-      <td class="gdiv" data-label="QR"><span class="ib qr" onclick="openQR('${o.id}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7M17 21h.01"/></svg></span></td>
+      <td class="gdiv" data-label="QR"><span class="ib qr" onclick="openQR('${o.id}','order')">${SVG_QR}</span></td>
       <td data-label="Actions"><div class="acts">
         <span class="ib flag${o.prio?' on':''}" onclick="togglePrio('${o.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="${o.prio?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M5 22V4M5 4h11l-2.5 4 2.5 4H5"/></svg></span>
-        <span class="ib edit" onclick="openForm('${o.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <span class="ib edit" onclick="openForm('${o.id}')">${SVG_EDIT}</span>
         <span class="ib mail" onclick="emailWO('${o.id}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg></span>
-        <span class="ib del" onclick="delOrder('${o.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></span>
+        <span class="ib del" onclick="delOrder('${o.id}')">${SVG_DEL}</span>
       </div></td></tr>`;
-    if(open){
-      const stages=stagesFor(o),N=stages.length,prog=getProg(o);let pr='';
-      prog.forEach((dn,i)=>{let s='';for(let k=1;k<=N;k++)s+=`<div class="st${k<=dn?' done':''}" onclick="setStage('${o.id}',${i},${k})">${SHORT[stages[k-1]]||stages[k-1]}</div>`;
-        pr+=`<div class="cprog"><div class="cn">#${i+1}</div><div class="stages">${s}</div><div class="pct">${Math.round(dn/N*100)}%</div></div>`;});
-      h+=`<tr class="detail"><td colspan="13"><div class="detail-in"><div class="dhead">Build progress — ${prog.length} container${prog.length>1?'s':''} · ${esc(o.sz)}</div>${pr}</div></td></tr>`;
-    }
+    if(open)h+=progressRow(o,'setStage',13);
   });
   $('b').innerHTML=h||'<tr><td colspan="13" style="padding:30px;text-align:center;color:#9aa3af">No containers in this view.</td></tr>';
 }
-function toggleExpand(id){expanded.has(id)?expanded.delete(id):expanded.add(id);render();}
-function setField(id,f,v){const o=find(id);if(o){o[f]=v;render();scheduleSave();}}
-function setQty(id,el){const o=find(id);if(!o)return;o.qty=clampQty(el.value);getProg(o);render();scheduleSave();}
-function setStage(id,ci,stage){const o=find(id);if(!o)return;const a=getProg(o);a[ci]=(a[ci]===stage)?stage-1:stage;if(a[ci]<0)a[ci]=0;render();scheduleSave();}
-function togglePrio(id){const o=find(id);if(o){o.prio=!o.prio;render();scheduleSave();}}
-function delOrder(id){const o=find(id);if(!o)return;if(!confirm('Delete ticket '+(o.tid||id)+'?'))return;D=D.filter(x=>x.id!==id);expanded.delete(id);render();scheduleSave();}
-function emailWO(id){const o=find(id);if(!o)return;
-  const tk=o.tid||o.id;
-  const subj=`Container Work Order — ${o.loc||tk} (Ticket ${tk})`;
-  const body=[
-    `Ticket: ${tk}`,`Location: ${o.loc||''}`,o.addr?`Address: ${o.addr}`:'',o.ph?`Phone: ${o.ph}`:'',
-    `Status: ${o.st}`,`Qty: ${o.qty}`,`Build: ${o.bd}`,`Container Size: ${o.sz}`,`Load Style: ${o.ld}`,`Lids: ${o.li}`,`Casters: ${o.ca}`,
-    o.pl?`Order Placed: ${o.pl}`:'',o.du?`Projected Completion: ${o.du}`:'',o.no?`Notes: ${o.no}`:''
-  ].filter(Boolean).join('\n');
-  window.location.href='mailto:'+CONFIG.EMAIL_TO+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+function progressRow(o,fn,cols){
+  const stages=stagesFor(o),N=stages.length,prog=getProg(o);let pr='';
+  prog.forEach((dn,i)=>{let s='';for(let k=1;k<=N;k++)s+=`<div class="st${k<=dn?' done':''}" onclick="${fn}('${o.id}',${i},${k})">${SHORT[stages[k-1]]||stages[k-1]}</div>`;
+    pr+=`<div class="cprog"><div class="cn">#${i+1}</div><div class="stages">${s}</div><div class="pct">${Math.round(dn/N*100)}%</div></div>`;});
+  return `<tr class="detail"><td colspan="${cols}"><div class="detail-in"><div class="dhead">Build progress — ${prog.length} container${prog.length>1?'s':''} · ${esc(o.sz)}</div>${pr}</div></td></tr>`;
 }
+function toggleExpand(id){expanded.has(id)?expanded.delete(id):expanded.add(id);renderOrders();}
+function setField(id,f,v){const o=find(id);if(o){o[f]=v;renderOrders();markDirty(id);}}
+function setQty(id,el){const o=find(id);if(!o)return;o.qty=clampQty(el.value);getProg(o);renderOrders();markDirty(id);}
+function setStage(id,ci,stage){const o=find(id);if(!o)return;const a=getProg(o);a[ci]=(a[ci]===stage)?stage-1:stage;if(a[ci]<0)a[ci]=0;renderOrders();markDirty(id);}
+function togglePrio(id){const o=find(id);if(o){o.prio=!o.prio;renderOrders();markDirty(id);}}
+function delOrder(id){const o=find(id);if(!o)return;if(!confirm('Delete ticket '+(o.tid||id)+'?'))return;D=D.filter(x=>x.id!==id);expanded.delete(id);renderOrders();pushDelete('Orders',id);}
+function emailWO(id){const o=find(id);if(!o)return;const tk=o.tid||o.id;
+  const subj=`Container Work Order — ${o.loc||tk} (Ticket ${tk})`;
+  const body=[`Ticket: ${tk}`,`Location: ${o.loc||''}`,o.addr?`Address: ${o.addr}`:'',o.ph?`Phone: ${o.ph}`:'',`Status: ${o.st}`,`Qty: ${o.qty}`,`Build: ${o.bd}`,`Container Size: ${o.sz}`,`Load Style: ${o.ld}`,`Lids: ${o.li}`,`Casters: ${o.ca}`,o.pl?`Order Placed: ${o.pl}`:'',o.du?`Projected Completion: ${o.du}`:'',o.no?`Notes: ${o.no}`:''].filter(Boolean).join('\n');
+  window.location.href='mailto:'+CONFIG.EMAIL_TO+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);}
 let pop=null;
 function openPop(e,id,field){e.stopPropagation();closePop();const map=field==='st'?STATUS:LOAD;pop=document.createElement('div');pop.className='pop';
-  Object.keys(map).forEach(k=>{const b=document.createElement('button');b.innerHTML=`<span class="dot" style="background:${map[k].d}"></span>${k}`;b.onclick=()=>{const o=find(id);if(o){o[field]=k;}closePop();render();scheduleSave();};pop.appendChild(b);});
+  Object.keys(map).forEach(k=>{const b=document.createElement('button');b.innerHTML=`<span class="dot" style="background:${map[k].d}"></span>${k}`;b.onclick=()=>{const o=find(id);if(o)o[field]=k;closePop();renderOrders();markDirty(id);};pop.appendChild(b);});
   document.body.appendChild(pop);const r=e.currentTarget.getBoundingClientRect();pop.style.top=(r.bottom+5)+'px';pop.style.left=Math.min(r.left,innerWidth-pop.offsetWidth-12)+'px';}
 function closePop(){if(pop){pop.remove();pop=null;}}
 document.addEventListener('click',closePop);
 
-/* ===== New / Edit form ===== */
-function fillFormSelects(){if(formFilled)return;formFilled=true;
-  $('f_st').innerHTML=opt(Object.keys(STATUS));$('f_bd').innerHTML=opt(BUILDS);$('f_sz').innerHTML=opt(CTYPES);
-  $('f_ld').innerHTML=opt(Object.keys(LOAD));$('f_li').innerHTML=opt(LIDS);$('f_ca').innerHTML=opt(CASTERS);}
+/* ===== STOCK board (no work ticket) ===== */
+function renderStock(){
+  $('thr').innerHTML=STOCK_HEAD;
+  const q=$('search').value.trim().toLowerCase();
+  let list=S.slice();
+  if(q)list=list.filter(o=>[o.loc,o.sz,o.bd,o.ca,o.no].join(' ').toLowerCase().includes(q));
+  $('count').textContent=list.length+' stock';
+  let h='',z=0;
+  list.forEach(o=>{
+    const open=expS.has(o.id),zc=(z++%2)?' zebra':'';
+    h+=`<tr class="r${zc}" data-rowid="${o.id}">
+      <td class="c-tkt"><div class="tktwrap"><span class="tkt${open?' open':''}" onclick="stExpand('${o.id}')"><span class="cv">${SVG_CARET}</span>Build</span></div></td>
+      <td class="loc" data-label="Location"><div class="nm">${esc(o.loc)}</div></td>
+      <td class="gdiv" data-label="Build"><select class="cell ${o.bd==='New Container'?'cnew':'creb'}" onchange="stSet('${o.id}','bd',this.value)">${opt(BUILDS,o.bd)}</select></td>
+      <td data-label="Size"><select class="cell" onchange="stSet('${o.id}','sz',this.value)">${opt(CTYPES,o.sz)}</select></td>
+      <td data-label="Load"><select class="cell" onchange="stSet('${o.id}','ld',this.value)">${opt(LOADS,o.ld)}</select></td>
+      <td data-label="Lids"><select class="cell" onchange="stSet('${o.id}','li',this.value)">${opt(LIDS,o.li)}</select></td>
+      <td data-label="Casters"><select class="cell wide" onchange="stSet('${o.id}','ca',this.value)">${opt(CASTERS,o.ca)}</select></td>
+      <td class="gdiv" data-label="Qty"><input class="qty" type="number" min="1" max="10" value="${o.qty}" onchange="stQty('${o.id}',this)"></td>
+      <td data-label="Notes"><div class="notes"><textarea onchange="stSet('${o.id}','no',this.value)" placeholder="Notes…">${esc(o.no)}</textarea></div></td>
+      <td class="gdiv" data-label="QR"><span class="ib qr" onclick="openQR('${o.id}','stock')">${SVG_QR}</span></td>
+      <td data-label="Actions"><div class="acts"><span class="ib edit" onclick="stForm('${o.id}')">${SVG_EDIT}</span><span class="ib del" onclick="stDel('${o.id}')">${SVG_DEL}</span></div></td>
+    </tr>`;
+    if(open)h+=progressRow(o,'stStage',11);
+  });
+  $('b').innerHTML=h||'<tr><td colspan="11" style="padding:30px;text-align:center;color:#9aa3af">No stock containers yet. Click <b>+ New Stock</b>.</td></tr>';
+}
+function stExpand(id){expS.has(id)?expS.delete(id):expS.add(id);renderStock();}
+function stSet(id,f,v){const o=findS(id);if(o){o[f]=v;renderStock();markDirtyS(id);}}
+function stQty(id,el){const o=findS(id);if(!o)return;o.qty=clampQty(el.value);getProg(o);renderStock();markDirtyS(id);}
+function stStage(id,ci,stage){const o=findS(id);if(!o)return;const a=getProg(o);a[ci]=(a[ci]===stage)?stage-1:stage;if(a[ci]<0)a[ci]=0;renderStock();markDirtyS(id);}
+function stDel(id){const o=findS(id);if(!o)return;if(!confirm('Delete this stock container?'))return;S=S.filter(x=>x.id!==id);expS.delete(id);renderStock();pushDelete('Stock',id);}
+function fillStockSelects(){if(stockFilled)return;stockFilled=true;$('s_bd').innerHTML=opt(BUILDS);$('s_sz').innerHTML=opt(CTYPES);$('s_ld').innerHTML=opt(LOADS);$('s_li').innerHTML=opt(LIDS);$('s_ca').innerHTML=opt(CASTERS);}
+function stForm(id){fillStockSelects();editIdS=id||null;$('stockTitle').textContent=id?'Edit Stock Container':'New Stock Container';
+  const o=id?findS(id):null;
+  $('s_loc').value=o?o.loc:'';$('s_qty').value=o?o.qty:1;$('s_bd').value=o?o.bd:'New Container';$('s_sz').value=o?o.sz:'2 Yard';$('s_ld').value=o?o.ld:'Front Load';$('s_li').value=o?o.li:'None';$('s_ca').value=o?o.ca:'None';$('s_no').value=o?o.no:'';
+  $('stockModal').classList.add('open');}
+function closeStockForm(){$('stockModal').classList.remove('open');}
+function stSaveForm(){
+  const loc=$('s_loc').value.trim();if(!loc){alert('Customer Location is required.');return;}
+  const data={loc,qty:clampQty($('s_qty').value),bd:$('s_bd').value,sz:$('s_sz').value,ld:$('s_ld').value,li:$('s_li').value,ca:$('s_ca').value,no:$('s_no').value};
+  let sid;
+  if(editIdS){const o=findS(editIdS);if(o){Object.assign(o,data);getProg(o);}sid=editIdS;}
+  else{const o=Object.assign({id:uid(),createdAt:new Date().toISOString(),sort:S.length,pr:[]},data);getProg(o);S.push(o);expS.add(o.id);sid=o.id;}
+  closeStockForm();renderStock();markDirtyS(sid);}
+
+/* ===== New / Edit ORDER form ===== */
+function fillFormSelects(){if(formFilled)return;formFilled=true;$('f_st').innerHTML=opt(Object.keys(STATUS));$('f_bd').innerHTML=opt(BUILDS);$('f_sz').innerHTML=opt(CTYPES);$('f_ld').innerHTML=opt(LOADS);$('f_li').innerHTML=opt(LIDS);$('f_ca').innerHTML=opt(CASTERS);}
 function openForm(id){fillFormSelects();editId=id||null;$('formTitle').textContent=id?'Edit Order':'New Order';
   const o=id?find(id):null;
   $('f_id').value=o?(o.tid||''):'';$('f_loc').value=o?o.loc:'';$('f_addr').value=o?(o.addr||''):'';$('f_ph').value=o?(o.ph||''):'';
@@ -367,106 +437,94 @@ function openForm(id){fillFormSelects();editId=id||null;$('formTitle').textConte
   $('formModal').classList.add('open');}
 function closeForm(){$('formModal').classList.remove('open');}
 function saveForm(){
-  const loc=$('f_loc').value.trim();
-  if(!loc){alert('Location / Site is required.');return;}
-  const data={tid:$('f_id').value.trim(),loc:loc,addr:$('f_addr').value.trim(),ph:$('f_ph').value.trim(),
-    st:$('f_st').value,pl:$('f_pl').value,du:$('f_du').value,qty:clampQty($('f_qty').value),
-    bd:$('f_bd').value,sz:$('f_sz').value,ld:$('f_ld').value,li:$('f_li').value,ca:$('f_ca').value,
-    prio:$('f_prio').checked,no:$('f_no').value};
-  if(editId){const o=find(editId);if(o){Object.assign(o,data);getProg(o);}}
-  else{const o=Object.assign({id:uid(),createdAt:new Date().toISOString(),sort:D.length,pr:[]},data);getProg(o);D.push(o);expanded.add(o.id);}
-  closeForm();render();scheduleSave();}
+  const loc=$('f_loc').value.trim();if(!loc){alert('Location / Site is required.');return;}
+  const data={tid:$('f_id').value.trim(),loc,addr:$('f_addr').value.trim(),ph:$('f_ph').value.trim(),st:$('f_st').value,pl:$('f_pl').value,du:$('f_du').value,qty:clampQty($('f_qty').value),bd:$('f_bd').value,sz:$('f_sz').value,ld:$('f_ld').value,li:$('f_li').value,ca:$('f_ca').value,prio:$('f_prio').checked,no:$('f_no').value};
+  let oid;
+  if(editId){const o=find(editId);if(o){Object.assign(o,data);getProg(o);}oid=editId;}
+  else{const o=Object.assign({id:uid(),createdAt:new Date().toISOString(),sort:D.length,pr:[]},data);getProg(o);D.push(o);expanded.add(o.id);oid=o.id;}
+  closeForm();renderOrders();markDirty(oid);}
 
-/* ===== QR ===== */
-const qurl=(o,ci)=>BASE+'?ticket='+encodeURIComponent(o.tid||o.id)+'&c='+ci;
+/* ===== QR (orders + stock) ===== */
+const qurl=(o,ci,kind)=>BASE+(kind==='stock'?'?stock='+encodeURIComponent(o.id):'?ticket='+encodeURIComponent(o.tid||o.id))+'&c='+ci;
 const doneList=(d,stages)=>d<=0?'Not started':stages.slice(0,d).join(', ');
-function openQR(id){const o=find(id);if(!o)return;qrId=id;$('qrT').textContent=o.loc||o.tid||o.id;$('qrS').textContent=o.sz;
+function openQR(id,kind){const o=kind==='stock'?findS(id):find(id);if(!o)return;qrId=id;qrKind=kind||'order';
+  $('qrT').textContent=o.loc||o.tid||o.id;$('qrS').textContent=(kind==='stock'?'Stock · ':'')+o.sz;
   const stages=stagesFor(o),N=stages.length;
   const g=$('qrG');g.innerHTML='';getProg(o).forEach((dn,i)=>{
     const cell=document.createElement('div');cell.className='qrcell';const q=document.createElement('div');q.className='qr';
-    new QRCode(q,{text:qurl(o,i+1),width:140,height:140,correctLevel:QRCode.CorrectLevel.M});
+    new QRCode(q,{text:qurl(o,i+1,kind),width:140,height:140,correctLevel:QRCode.CorrectLevel.M});
     const pct=Math.round(dn/N*100);
     const cap=document.createElement('div');cap.className='qrcap';cap.innerHTML=`${esc(o.loc||o.tid||o.id)}<span class="qccont">Container #${i+1}</span><span class="sub"><b>${pct}% complete</b><span class="done">${dn<=0?'Not started':'Done: '+esc(doneList(dn,stages))}</span></span>`;
     const btn=document.createElement('button');btn.className='qrprint';btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print`;
-    btn.onclick=()=>printLabel(o.id,i+1);cell.append(q,cap,btn);g.appendChild(cell);});
+    btn.onclick=()=>printLabel(o.id,i+1,kind);cell.append(q,cap,btn);g.appendChild(cell);});
   $('qrModal').classList.add('open');}
 function closeQR(){$('qrModal').classList.remove('open');}
-function mkLabel(o,ci){const w=document.createElement('div');w.className='label';const qd=document.createElement('div');qd.className='lqr';
-  new QRCode(qd,{text:qurl(o,ci),width:130,height:130,correctLevel:QRCode.CorrectLevel.M});
+function mkLabel(o,ci,kind){const w=document.createElement('div');w.className='label';const qd=document.createElement('div');qd.className='lqr';
+  new QRCode(qd,{text:qurl(o,ci,kind),width:130,height:130,correctLevel:QRCode.CorrectLevel.M});
   const t=document.createElement('div');t.className='lt';t.textContent=o.loc||o.tid||o.id;
   const c=document.createElement('div');c.className='lc';c.textContent='Container #'+ci;
-  const s=document.createElement('div');s.className='ls';s.textContent='Ticket '+(o.tid||o.id)+' • '+o.sz;w.append(qd,t,c,s);return w;}
-function printLabel(id,ci){const o=find(id);const box=$('printLabels');box.innerHTML='';box.appendChild(mkLabel(o,ci));setTimeout(()=>print(),200);}
-function printTicket(){const o=find(qrId);const box=$('printLabels');box.innerHTML='';for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i));setTimeout(()=>print(),300);}
-function printAll(){const box=$('printLabels');box.innerHTML='';D.forEach(o=>{for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i));});setTimeout(()=>print(),350);}
+  const s=document.createElement('div');s.className='ls';s.textContent=(kind==='stock'?'Stock':'Ticket '+(o.tid||o.id))+' • '+o.sz;w.append(qd,t,c,s);return w;}
+function printLabel(id,ci,kind){const o=kind==='stock'?findS(id):find(id);const box=$('printLabels');box.innerHTML='';box.appendChild(mkLabel(o,ci,kind));setTimeout(()=>print(),200);}
+function printTicket(){const o=qrKind==='stock'?findS(qrId):find(qrId);const box=$('printLabels');box.innerHTML='';for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i,qrKind));setTimeout(()=>print(),300);}
+function printAll(){const arr=view==='stock'?S:D,kind=view==='stock'?'stock':'order';const box=$('printLabels');box.innerHTML='';arr.forEach(o=>{for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i,kind));});setTimeout(()=>print(),350);}
 
 /* ===== sticky header height ===== */
 function syncHeaderH(){const h=document.getElementById('appHeader');if(h)document.documentElement.style.setProperty('--hh',h.offsetHeight+'px');}
 window.addEventListener('resize',syncHeaderH);window.addEventListener('load',syncHeaderH);setTimeout(syncHeaderH,300);
 
-/* ===== Google Sheet sync ===== */
+/* ===== Google Sheet sync — per-row upsert / delete ===== */
 function setSync(s){const el=$('sync');if(!el)return;
   if(!CONFIG.API_URL){el.textContent='● local only';el.style.color='#67707c';return;}
   const m={ok:['● synced','#16a34a'],saving:['● saving…','#b45309'],loading:['● loading…','#b45309'],offline:['● offline','#dc2626']};
   const v=m[s]||m.ok;el.textContent=v[0];el.style.color=v[1];}
 function parseProg(v){if(Array.isArray(v))return v.map(x=>x|0);if(v==null||v==='')return [];try{const a=JSON.parse(v);return Array.isArray(a)?a.map(x=>x|0):[];}catch(e){return [];}}
 function truthy(v){return v===true||v===1||v==='1'||String(v).toUpperCase()==='TRUE';}
-function orderFromRow(r){return{
-  id:r.id||uid(),tid:String(r.ticketId==null?'':r.ticketId),st:r.status||'New',loc:r.siteName||'',
-  addr:r.address||'',ph:r.phone==null?'':String(r.phone),bd:r.category||'New Container',ld:r.loadType||'Front Load',
-  sz:r.containerType||'2 Yard',li:r.lids||'None',no:r.notes==null?'':String(r.notes),qty:clampQty(r.qty||1),
-  ca:r.casters||'None',prio:truthy(r.priority),sort:(r.sort===''||r.sort==null)?0:(Number(r.sort)||0),
-  pr:parseProg(r.progress),pl:dateStr(r.orderPlaced),du:dateStr(r.projectedDone),createdAt:r.createdAt||''};}
-function rowFromOrder(o){return{
-  id:o.id,ticketId:o.tid||'',status:o.st||'New',siteName:o.loc||'',address:o.addr||'',phone:o.ph||'',
-  category:o.bd||'New Container',loadType:o.ld||'Front Load',containerType:o.sz||'2 Yard',lids:o.li||'None',
-  notes:o.no||'',createdAt:o.createdAt||'',updatedAt:'',qty:o.qty||1,casters:o.ca||'None',priority:o.prio?1:'',
-  sort:(o.sort!=null?o.sort:0),progress:JSON.stringify(o.pr||[]),orderPlaced:o.pl||'',projectedDone:o.du||''};}
+function orderFromRow(r){return{id:r.id||uid(),tid:String(r.ticketId==null?'':r.ticketId),st:r.status||'New',loc:r.siteName||'',addr:r.address||'',ph:r.phone==null?'':String(r.phone),bd:r.category||'New Container',ld:r.loadType||'Front Load',sz:r.containerType||'2 Yard',li:r.lids||'None',no:r.notes==null?'':String(r.notes),qty:clampQty(r.qty||1),ca:r.casters||'None',prio:truthy(r.priority),sort:(r.sort===''||r.sort==null)?0:(Number(r.sort)||0),pr:parseProg(r.progress),pl:dateStr(r.orderPlaced),du:dateStr(r.projectedDone),createdAt:r.createdAt||''};}
+function rowFromOrder(o){return{id:o.id,ticketId:o.tid||'',status:o.st||'New',siteName:o.loc||'',address:o.addr||'',phone:o.ph||'',category:o.bd||'New Container',loadType:o.ld||'Front Load',containerType:o.sz||'2 Yard',lids:o.li||'None',notes:o.no||'',createdAt:o.createdAt||'',updatedAt:'',qty:o.qty||1,casters:o.ca||'None',priority:o.prio?1:'',sort:(o.sort!=null?o.sort:0),progress:JSON.stringify(o.pr||[]),orderPlaced:o.pl||'',projectedDone:o.du||''};}
+function stockFromRow(r){return{id:r.id||uid(),loc:r.loc||'',bd:r.category||'New Container',sz:r.containerType||'2 Yard',ld:r.loadType||'Front Load',li:r.lids||'None',ca:r.casters||'None',qty:clampQty(r.qty||1),no:r.notes==null?'':String(r.notes),sort:(r.sort===''||r.sort==null)?0:(Number(r.sort)||0),pr:parseProg(r.progress),createdAt:r.createdAt||''};}
+function rowFromStock(o){return{id:o.id,loc:o.loc||'',category:o.bd||'New Container',containerType:o.sz||'2 Yard',loadType:o.ld||'Front Load',lids:o.li||'None',casters:o.ca||'None',qty:o.qty||1,notes:o.no||'',sort:(o.sort!=null?o.sort:0),progress:JSON.stringify(o.pr||[]),createdAt:o.createdAt||'',updatedAt:''};}
 function jsonp(url){return new Promise((res,rej)=>{
-  const cb='__wrs_cb_'+Math.random().toString(36).slice(2);let done=false;
-  const s=document.createElement('script');
+  const cb='__wrs_cb_'+Math.random().toString(36).slice(2);let done=false;const s=document.createElement('script');
   window[cb]=d=>{done=true;cleanup();res(d);};
   function cleanup(){try{delete window[cb];}catch(e){window[cb]=undefined;}if(s.parentNode)s.remove();}
   s.onerror=()=>{if(!done){cleanup();rej(new Error('jsonp error'));}};
   s.src=url+(url.indexOf('?')>=0?'&':'?')+'callback='+cb+'&_t='+Date.now();
   document.body.appendChild(s);
   setTimeout(()=>{if(!done){cleanup();rej(new Error('timeout'));}},14000);});}
-function isEditingNow(){
-  if($('formModal').classList.contains('open')||$('qrModal').classList.contains('open'))return true;
-  const ae=document.activeElement;return !!ae&&['TEXTAREA','SELECT','INPUT'].includes(ae.tagName);}
+function postAction(payload){return fetch(CONFIG.API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});}
+const dirty=new Set(),dirtyS=new Set();let flushTimer=null,flushTimerS=null;
+function markDirty(id){if(!CONFIG.API_URL)return;dirty.add(id);setSync('saving');clearTimeout(flushTimer);flushTimer=setTimeout(flushDirty,700);}
+function flushDirty(){const ids=[...dirty];dirty.clear();if(!ids.length)return;ids.forEach(id=>{const o=find(id);if(o)postAction({action:'upsert',tab:'Orders',order:rowFromOrder(o)});});setSync('ok');}
+function markDirtyS(id){if(!CONFIG.API_URL)return;dirtyS.add(id);setSync('saving');clearTimeout(flushTimerS);flushTimerS=setTimeout(flushDirtyS,700);}
+function flushDirtyS(){const ids=[...dirtyS];dirtyS.clear();if(!ids.length)return;ids.forEach(id=>{const o=findS(id);if(o)postAction({action:'upsert',tab:'Stock',order:rowFromStock(o)});});setSync('ok');}
+function pushDelete(tab,id){if(!CONFIG.API_URL)return;setSync('saving');postAction({action:'delete',tab,id}).then(()=>setSync('ok')).catch(()=>setSync('offline'));}
+function isEditingNow(){if($('formModal').classList.contains('open')||$('stockModal').classList.contains('open')||$('qrModal').classList.contains('open'))return true;const ae=document.activeElement;return !!ae&&['TEXTAREA','SELECT','INPUT'].includes(ae.tagName);}
 function loadRemote(force){
-  if(!CONFIG.API_URL){setSync();render();return Promise.resolve();}
-  if(!force&&isEditingNow())return Promise.resolve();
+  if(!CONFIG.API_URL){setSync();renderView();return Promise.resolve();}
+  if(!force&&(isEditingNow()||dirty.size))return Promise.resolve();
   setSync('loading');
-  return jsonp(CONFIG.API_URL).then(d=>{
-    if(d&&d.ok&&Array.isArray(d.orders)){
-      D=d.orders.map(orderFromRow).sort((a,b)=>a.sort-b.sort);
-      render();setSync('ok');
-      if(!deepDone){deepDone=true;handleDeepLink();}
-    }else setSync('offline');
+  return jsonp(CONFIG.API_URL+'?tab=Orders').then(d=>{
+    if(d&&d.ok&&Array.isArray(d.orders)){D=d.orders.map(orderFromRow).sort((a,b)=>a.sort-b.sort);if(view==='orders')renderOrders();setSync('ok');}
+    else setSync('offline');
   }).catch(()=>setSync('offline'));}
-function saveAll(){
-  if(!CONFIG.API_URL)return;
-  D.forEach((o,i)=>o.sort=i);
-  setSync('saving');
-  fetch(CONFIG.API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
-    body:JSON.stringify({action:'saveAll',orders:D.map(rowFromOrder)})})
-    .then(()=>setSync('ok')).catch(()=>setSync('offline'));}
-function scheduleSave(){if(!CONFIG.API_URL)return;setSync('saving');clearTimeout(saveTimer);saveTimer=setTimeout(saveAll,700);}
+function loadStock(force){
+  if(!CONFIG.API_URL)return Promise.resolve();
+  if(!force&&(isEditingNow()||dirtyS.size))return Promise.resolve();
+  return jsonp(CONFIG.API_URL+'?tab=Stock').then(d=>{
+    if(d&&d.ok&&Array.isArray(d.orders)){S=d.orders.map(stockFromRow).sort((a,b)=>a.sort-b.sort);if(view==='stock')renderStock();}
+  }).catch(()=>{});}
 
-/* ===== deep link (QR scan opens the ticket) ===== */
+/* ===== deep link (QR scan) ===== */
 function handleDeepLink(){
-  const p=new URLSearchParams(location.search);const t=p.get('ticket');if(!t)return;
-  const o=D.find(x=>String(x.tid).toLowerCase()===t.toLowerCase());if(!o)return;
-  $('search').value='';expanded.add(o.id);render();
-  setTimeout(()=>{const row=document.querySelector('[data-rowid="'+o.id+'"]');
-    if(row){row.classList.add('flash');row.scrollIntoView({behavior:'smooth',block:'center'});}},120);}
+  const p=new URLSearchParams(location.search);const tk=p.get('ticket'),sk=p.get('stock');
+  if(sk){const o=findS(sk);if(o){view='stock';expS.add(sk);renderView();flashRow(sk);}return;}
+  if(tk){const o=D.find(x=>String(x.tid).toLowerCase()===tk.toLowerCase());if(o){view='orders';expanded.add(o.id);renderView();flashRow(o.id);}}}
+function flashRow(id){setTimeout(()=>{const row=document.querySelector('[data-rowid="'+id+'"]');if(row){row.classList.add('flash');row.scrollIntoView({behavior:'smooth',block:'center'});}},150);}
 
 /* ===== init ===== */
-syncHeaderH();
-setSync('loading');
-loadRemote(true);
-setInterval(()=>loadRemote(false),30000);
+syncHeaderH();setSync('loading');renderView();
+Promise.all([loadRemote(true),loadStock(true)]).then(()=>{if(!deepDone){deepDone=true;handleDeepLink();}});
+setInterval(()=>{loadRemote(false);loadStock(false);},30000);
 </script>
 </body>
 </html>
