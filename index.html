@@ -5,8 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WRS Containers — Compact Redesign (Interactive Mockup)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@400;500;600;700&display=swap"></noscript>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <style>
 :root{
   --hh:64px;
@@ -293,6 +298,9 @@ const SVG_CARET='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" str
 let D=[],S=[];
 const expanded=new Set(),expS=new Set();
 let view='orders',curFilter='all',qrId=null,qrKind='',editId=null,editIdS=null,deepDone=false,formFilled=false,stockFilled=false;
+const LS_O='wrs_orders_v1',LS_S='wrs_stock_v1';let stockLoaded=false;
+function cacheGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
+function cacheSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clampQty=v=>{v=parseInt(v,10);if(isNaN(v)||v<1)return 1;return v>10?10:v;};
@@ -305,7 +313,7 @@ function getProg(o){const n=clampQty(o.qty);const max=stagesFor(o).length;o.pr=(
 function find(id){return D.find(o=>o.id===id);}
 function findS(id){return S.find(o=>o.id===id);}
 
-$('vtabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{view=b.dataset.v;$('search').value='';renderView();});
+$('vtabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{view=b.dataset.v;$('search').value='';renderView();if(view==='stock'&&!stockLoaded)loadStock(true);});
 $('filter').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('filter').querySelectorAll('button').forEach(x=>x.classList.remove('active'));b.classList.add('active');curFilter=b.dataset.f;renderOrders();});
 function newClick(){view==='stock'?stForm():openForm();}
 function render(){renderView();}
@@ -504,14 +512,14 @@ function loadRemote(force){
   if(!force&&(isEditingNow()||dirty.size))return Promise.resolve();
   setSync('loading');
   return jsonp(CONFIG.API_URL+'?tab=Orders').then(d=>{
-    if(d&&d.ok&&Array.isArray(d.orders)){D=d.orders.map(orderFromRow).sort((a,b)=>a.sort-b.sort);if(view==='orders')renderOrders();setSync('ok');}
+    if(d&&d.ok&&Array.isArray(d.orders)){D=d.orders.map(orderFromRow).sort((a,b)=>a.sort-b.sort);cacheSet(LS_O,D);if(view==='orders')renderOrders();setSync('ok');}
     else setSync('offline');
   }).catch(()=>setSync('offline'));}
 function loadStock(force){
   if(!CONFIG.API_URL)return Promise.resolve();
   if(!force&&(isEditingNow()||dirtyS.size))return Promise.resolve();
   return jsonp(CONFIG.API_URL+'?tab=Stock').then(d=>{
-    if(d&&d.ok&&Array.isArray(d.orders)){S=d.orders.map(stockFromRow).sort((a,b)=>a.sort-b.sort);if(view==='stock')renderStock();}
+    if(d&&d.ok&&Array.isArray(d.orders)){S=d.orders.map(stockFromRow).sort((a,b)=>a.sort-b.sort);stockLoaded=true;cacheSet(LS_S,S);if(view==='stock')renderStock();}
   }).catch(()=>{});}
 
 /* ===== deep link (QR scan) ===== */
@@ -522,9 +530,15 @@ function handleDeepLink(){
 function flashRow(id){setTimeout(()=>{const row=document.querySelector('[data-rowid="'+id+'"]');if(row){row.classList.add('flash');row.scrollIntoView({behavior:'smooth',block:'center'});}},150);}
 
 /* ===== init ===== */
-syncHeaderH();setSync('loading');renderView();
-Promise.all([loadRemote(true),loadStock(true)]).then(()=>{if(!deepDone){deepDone=true;handleDeepLink();}});
-setInterval(()=>{loadRemote(false);loadStock(false);},30000);
+syncHeaderH();
+(function boot(){
+  const co=cacheGet(LS_O);if(Array.isArray(co)&&co.length){D=co;}
+  const cs=cacheGet(LS_S);if(Array.isArray(cs)&&cs.length){S=cs;stockLoaded=true;}
+  renderView();
+  setSync('loading');
+  loadRemote(true).then(()=>{if(!deepDone){deepDone=true;handleDeepLink();}if(stockLoaded)loadStock(false);});
+})();
+setInterval(()=>{loadRemote(false);if(stockLoaded)loadStock(false);},30000);
 </script>
 </body>
 </html>
