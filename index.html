@@ -137,9 +137,12 @@ tbody tr.prio{background:#fff5f5}
 @media(max-width:560px){.form{grid-template-columns:1fr}}
 .print-root{display:none}
 @media print{body *{visibility:hidden}.print-root,.print-root *{visibility:visible}.print-root{display:block;position:absolute;inset:0;background:#fff}
-.labels{display:flex;flex-wrap:wrap}.label{width:2.5in;height:2.5in;border:1px dashed #999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;page-break-inside:avoid}
-.label .lqr{margin-bottom:6px}.label .lt{font-family:'Oswald';font-weight:700;font-size:15px;text-align:center;line-height:1.1}
-.label .lc{font-family:'Oswald';font-weight:700;font-size:13px;color:#b91c1c;text-align:center;margin-top:2px}.label .ls{font-size:9.5px;color:#333;text-align:center;margin-top:2px}}
+@page{size:1.57in 1.18in;margin:0}
+.labels{display:flex;flex-wrap:wrap}.label{width:1.57in;height:1.18in;box-sizing:border-box;border:none;display:flex;flex-direction:row;align-items:center;gap:.07in;padding:.05in;page-break-inside:avoid;overflow:hidden}
+.label .lqr{margin:0;flex:0 0 auto;line-height:0}.label .lqr img,.label .lqr canvas{width:1.02in!important;height:1.02in!important;display:block}
+.label .ltxt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;text-align:left}
+.label .lt{font-family:'Oswald';font-weight:700;font-size:8.5px;text-align:left;line-height:1.05;word-break:break-word}
+.label .lc{font-family:'Oswald';font-weight:700;font-size:8px;color:#b91c1c;text-align:left;margin-top:2px}.label .ls{font-size:6.5px;color:#333;text-align:left;margin-top:2px;line-height:1.1;word-break:break-word}}
 
 /* ================= MOBILE ================= */
 @media(max-width:820px){
@@ -468,10 +471,11 @@ function openQR(id,kind){const o=kind==='stock'?findS(id):find(id);if(!o)return;
   $('qrModal').classList.add('open');}
 function closeQR(){$('qrModal').classList.remove('open');}
 function mkLabel(o,ci,kind){const w=document.createElement('div');w.className='label';const qd=document.createElement('div');qd.className='lqr';
-  new QRCode(qd,{text:qurl(o,ci,kind),width:130,height:130,correctLevel:QRCode.CorrectLevel.M});
+  new QRCode(qd,{text:qurl(o,ci,kind),width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+  const tx=document.createElement('div');tx.className='ltxt';
   const t=document.createElement('div');t.className='lt';t.textContent=o.loc||o.tid||o.id;
   const c=document.createElement('div');c.className='lc';c.textContent='Container #'+ci;
-  const s=document.createElement('div');s.className='ls';s.textContent=(kind==='stock'?'Stock':'Ticket '+(o.tid||o.id))+' • '+o.sz;w.append(qd,t,c,s);return w;}
+  const s=document.createElement('div');s.className='ls';s.textContent=(kind==='stock'?'Stock':'Ticket '+(o.tid||o.id))+' • '+o.sz;tx.append(t,c,s);w.append(qd,tx);return w;}
 function printLabel(id,ci,kind){const o=kind==='stock'?findS(id):find(id);const box=$('printLabels');box.innerHTML='';box.appendChild(mkLabel(o,ci,kind));setTimeout(()=>print(),200);}
 function printTicket(){const o=qrKind==='stock'?findS(qrId):find(qrId);const box=$('printLabels');box.innerHTML='';for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i,qrKind));setTimeout(()=>print(),300);}
 function printAll(){const arr=view==='stock'?S:D,kind=view==='stock'?'stock':'order';const box=$('printLabels');box.innerHTML='';arr.forEach(o=>{for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i,kind));});setTimeout(()=>print(),350);}
