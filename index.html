@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@400;500;600;700&display=swap"></noscript>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <style>
 :root{
   --hh:64px;
@@ -121,6 +122,7 @@ tbody tr.prio{background:#fff5f5}
 .qrcap .sub .done{display:block;color:#374151;margin-top:2px}
 .qrprint{margin-top:10px;width:100%;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px;cursor:pointer;font-family:'Oswald';font-weight:600;text-transform:uppercase;letter-spacing:.4px;font-size:11px;color:var(--steel);display:flex;align-items:center;justify-content:center;gap:6px}
 .qrprint:hover{background:#6d28d9;color:#fff;border-color:#6d28d9}
+.qrsave{margin-top:6px;color:#047857;border-color:#a7f3d0}.qrsave:hover{background:#047857;color:#fff;border-color:#047857}
 .mfoot{padding:13px 18px;display:flex;justify-content:flex-end;gap:9px;border-top:1px solid var(--line2);background:#f7f9fb}
 .btn{font-family:'Oswald';text-transform:uppercase;letter-spacing:.5px;font-weight:600;font-size:13px;border:0;cursor:pointer;padding:10px 17px;border-radius:8px}
 .btn.primary{background:var(--amber);color:#1c2128}.btn.sec{background:#fff;border:1px solid var(--line);color:var(--muted)}
@@ -233,7 +235,7 @@ tbody tr.flash{animation:flash 2.2s ease}
 <div class="overlay" id="qrModal"><div class="modal">
   <h2><span>Container QR Codes</span><span class="x" onclick="closeQR()">&times;</span></h2>
   <div class="qrbox"><div class="qt" id="qrT"></div><div class="qsub" id="qrS"></div><div class="qrgrid" id="qrG"></div></div>
-  <div class="mfoot"><button class="btn sec" onclick="closeQR()">Close</button><button class="btn primary" onclick="printTicket()">Print All</button></div>
+  <div class="mfoot"><button class="btn sec" onclick="closeQR()">Close</button><button class="btn sec" onclick="saveTicketPDF()">⤓ Save PDF</button><button class="btn primary" onclick="printTicket()">Print All</button></div>
 </div></div>
 <div class="overlay" id="formModal"><div class="modal">
   <h2><span id="formTitle">New Order</span><span class="x" onclick="closeForm()">&times;</span></h2>
@@ -467,7 +469,9 @@ function openQR(id,kind){const o=kind==='stock'?findS(id):find(id);if(!o)return;
     const pct=Math.round(dn/N*100);
     const cap=document.createElement('div');cap.className='qrcap';cap.innerHTML=`${esc(o.loc||o.tid||o.id)}<span class="qccont">Container #${i+1}</span><span class="sub"><b>${pct}% complete</b><span class="done">${dn<=0?'Not started':'Done: '+esc(doneList(dn,stages))}</span></span>`;
     const btn=document.createElement('button');btn.className='qrprint';btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Print`;
-    btn.onclick=()=>printLabel(o.id,i+1,kind);cell.append(q,cap,btn);g.appendChild(cell);});
+    btn.onclick=()=>printLabel(o.id,i+1,kind);
+    const sbtn=document.createElement('button');sbtn.className='qrprint qrsave';sbtn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Save`;
+    sbtn.onclick=()=>saveLabel(o.id,i+1,kind);cell.append(q,cap,btn,sbtn);g.appendChild(cell);});
   $('qrModal').classList.add('open');}
 function closeQR(){$('qrModal').classList.remove('open');}
 function mkLabel(o,ci,kind){const w=document.createElement('div');w.className='label';const qd=document.createElement('div');qd.className='lqr';
@@ -479,6 +483,28 @@ function mkLabel(o,ci,kind){const w=document.createElement('div');w.className='l
 function printLabel(id,ci,kind){const o=kind==='stock'?findS(id):find(id);const box=$('printLabels');box.innerHTML='';box.appendChild(mkLabel(o,ci,kind));setTimeout(()=>print(),200);}
 function printTicket(){const o=qrKind==='stock'?findS(qrId):find(qrId);const box=$('printLabels');box.innerHTML='';for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i,qrKind));setTimeout(()=>print(),300);}
 function printAll(){const arr=view==='stock'?S:D,kind=view==='stock'?'stock':'order';const box=$('printLabels');box.innerHTML='';arr.forEach(o=>{for(let i=1;i<=clampQty(o.qty);i++)box.appendChild(mkLabel(o,i,kind));});setTimeout(()=>print(),350);}
+
+/* ===== Save label as true-size PDF (1.57in x 1.18in) — iPhone friendly ===== */
+const LBL_W=1.57, LBL_H=1.18, LBL_DPI=300;
+function makeQRimg(text,size){return new Promise(res=>{const d=document.createElement('div');new QRCode(d,{text,width:size,height:size,correctLevel:QRCode.CorrectLevel.M});const c=d.querySelector('canvas');if(c)return res(c);const img=d.querySelector('img');if(img&&img.complete)return res(img);if(img){img.onload=()=>res(img);return;}setTimeout(()=>res(d.querySelector('canvas')||d.querySelector('img')),60);});}
+function wrapLines(ctx,text,maxW){const words=String(text).split(/\s+/).filter(Boolean),lines=[];let cur='';for(const w of words){const t=cur?cur+' '+w:w;if(ctx.measureText(t).width<=maxW||!cur)cur=t;else{lines.push(cur);cur=w;}}if(cur)lines.push(cur);const out=[];for(const ln of lines){if(ctx.measureText(ln).width<=maxW){out.push(ln);continue;}let s='';for(const ch of ln){if(ctx.measureText(s+ch).width<=maxW)s+=ch;else{if(s)out.push(s);s=ch;}}if(s)out.push(s);}return out.length?out:[''];}
+async function buildLabelCanvas(o,ci,kind){if(document.fonts&&document.fonts.ready){try{await document.fonts.ready;}catch(e){}}
+  const W=Math.round(LBL_W*LBL_DPI),H=Math.round(LBL_H*LBL_DPI),cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);
+  const pad=Math.round(.06*LBL_DPI),qs=Math.round(1.02*LBL_DPI),qr=await makeQRimg(qurl(o,ci,kind),qs),qy=Math.round((H-qs)/2);
+  x.imageSmoothingEnabled=false;x.drawImage(qr,pad,qy,qs,qs);x.imageSmoothingEnabled=true;
+  const tx0=pad+qs+Math.round(.05*LBL_DPI),maxW=W-tx0-Math.round(.04*LBL_DPI),gap=Math.round(.03*LBL_DPI);
+  const f1=Math.round(.09*LBL_DPI),f2=Math.round(.082*LBL_DPI),f3=Math.round(.064*LBL_DPI);
+  const blocks=[{text:(o.loc||o.tid||o.id)||'',font:`700 ${f1}px Oswald, sans-serif`,color:'#111827',lh:Math.round(f1*1.08)},{text:'Container #'+ci,font:`700 ${f2}px Oswald, sans-serif`,color:'#b91c1c',lh:Math.round(f2*1.12)},{text:(kind==='stock'?'Stock':'Ticket '+(o.tid||o.id))+' • '+o.sz,font:`500 ${f3}px Barlow, sans-serif`,color:'#374151',lh:Math.round(f3*1.2)}];
+  let total=0;const rendered=[];for(const b of blocks){x.font=b.font;const lines=wrapLines(x,b.text,maxW);rendered.push(Object.assign({lines},b));total+=lines.length*b.lh;}total+=(blocks.length-1)*gap;
+  let y=Math.max(pad,Math.round((H-total)/2));x.textBaseline='top';x.textAlign='left';
+  for(const b of rendered){x.font=b.font;x.fillStyle=b.color;for(const ln of b.lines){x.fillText(ln,tx0,y);y+=b.lh;}y+=gap;}
+  return cv;}
+function labelPDFBlob(canvases){const ctor=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;if(!ctor)throw new Error('PDF library not loaded yet — try again in a moment');const pdf=new ctor({unit:'in',format:[LBL_W,LBL_H],orientation:'landscape'});canvases.forEach((cv,i)=>{if(i)pdf.addPage([LBL_W,LBL_H],'landscape');pdf.addImage(cv.toDataURL('image/png'),'PNG',0,0,LBL_W,LBL_H);});return pdf.output('blob');}
+function fileSafe(s){return String(s).replace(/[^\w\-]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'').slice(0,60)||'label';}
+async function deliverPDF(blob,name){const file=new File([blob],name,{type:'application/pdf'});if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:name});return;}catch(e){if(e&&e.name==='AbortError')return;}}const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);}
+async function saveLabel(id,ci,kind){const o=kind==='stock'?findS(id):find(id);if(!o)return;try{const cv=await buildLabelCanvas(o,ci,kind);await deliverPDF(labelPDFBlob([cv]),fileSafe('WRS_'+(o.loc||o.tid||o.id)+'_C'+ci)+'.pdf');}catch(e){alert('Could not create label PDF: '+e.message);}}
+async function saveTicketPDF(){const o=qrKind==='stock'?findS(qrId):find(qrId);if(!o)return;try{const cvs=[];for(let i=1;i<=clampQty(o.qty);i++)cvs.push(await buildLabelCanvas(o,i,qrKind));await deliverPDF(labelPDFBlob(cvs),fileSafe('WRS_'+(o.loc||o.tid||o.id))+'.pdf');}catch(e){alert('Could not create label PDF: '+e.message);}}
 
 /* ===== sticky header height ===== */
 function syncHeaderH(){const h=document.getElementById('appHeader');if(h)document.documentElement.style.setProperty('--hh',h.offsetHeight+'px');}
