@@ -475,7 +475,7 @@ function emailWO(id){const o=find(id);if(!o)return;const tk=o.tid||o.id;
   const subj=`Waste Recycling Services Steel Order For ${o.loc||tk}`;
   const meas=measurementsFor(o.sz,o.ld);
   const measBlock=meas?`\n--- Measurements (${o.sz} · ${o.ld}) ---\n${meas}\n`:'';
-  const body=[`Ticket: ${tk}`,`Location: ${o.loc||''}`,o.addr?`Address: ${o.addr}`:'',o.ph?`Phone: ${o.ph}`:'',`Status: ${o.st}`,`Qty: ${o.qty}`,`Build: ${o.bd}`,`Container Size: ${o.sz}`,`Load Style: ${o.ld}`,`Lids: ${o.li}`,`Casters: ${o.ca}`,o.pl?`Order Placed: ${o.pl}`:'',o.du?`Projected Completion: ${o.du}`:'',measBlock,o.no?`Notes: ${o.no}`:''].filter(Boolean).join('\n');
+  const body=[`Ticket: ${tk}`,`Location: ${o.loc||''}`,o.pl?`Order Placed: ${o.pl}`:'',o.du?`Projected Completion: ${o.du}`:'',measBlock].filter(Boolean).join('\n');
   const url='https://mail.google.com/mail/?view=cm&fs=1&tf=1&to='+encodeURIComponent(CONFIG.EMAIL_TO)+'&su='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
   window.open(url,'_blank','noopener');}
 let pop=null;
