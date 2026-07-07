@@ -222,6 +222,7 @@ tbody tr.flash{animation:flash 2.2s ease}
     <button data-v="stock">Stock</button>
   </div>
   <div class="sp"></div>
+  <button class="hbtn g" onclick="openDimsMgr()">📐 Dimensions</button>
   <button class="hbtn g" onclick="loadRemote(true)">⟳ Refresh</button>
   <button class="hbtn g" onclick="printAll()">⎙ Print QR</button>
 </header>
@@ -286,6 +287,21 @@ tbody tr.flash{animation:flash 2.2s ease}
   </div>
   <div class="mfoot"><button class="btn sec" onclick="closeStockForm()">Cancel</button><button class="btn primary" onclick="stSaveForm()">Save Stock</button></div>
 </div></div>
+<div class="overlay" id="dimsModal"><div class="modal" style="max-width:720px">
+  <h2><span>Container Dimensions</span><span class="x" onclick="closeDimsMgr()">&times;</span></h2>
+  <div style="padding:14px 18px 6px;display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+    <div class="fld"><label>Size</label><select id="dm_sz"></select></div>
+    <div class="fld"><label>Load</label><select id="dm_ld"></select></div>
+    <button class="btn sec" onclick="dmResetOne()" style="margin-left:auto">Reset to default</button>
+    <button class="btn sec" onclick="dmResetAll()">Reset ALL</button>
+  </div>
+  <div style="padding:6px 18px 14px">
+    <label style="font-family:'Oswald';font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px">Measurements (free text — one per line)</label>
+    <textarea id="dm_body" style="width:100%;min-height:200px;font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:10px;border:1px solid var(--line);border-radius:8px;box-sizing:border-box" placeholder="Overall:  72&quot;W x 42&quot;D x 46&quot;H&#10;Gate opening:  70&quot; x 32&quot;&#10;Approx weight:  520 lb"></textarea>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:6px">Saved locally in this browser. This block is auto-inserted into the email when a ticket matches this Size + Load.</div>
+  </div>
+  <div class="mfoot"><button class="btn sec" onclick="closeDimsMgr()">Close</button><button class="btn primary" onclick="dmSave()">Save</button></div>
+</div></div>
 <div class="print-root"><div class="labels" id="printLabels"></div></div>
 
 <script>
@@ -308,13 +324,13 @@ const STATUS={'Pick Up':{c:'p-pick',d:'#b45309'},'New':{c:'p-new',d:'#1d4ed8'},'
 const LOAD={'Front Load':{c:'p-front',d:'#0369a1'},'Rear Load':{c:'p-rear',d:'#9a3412'}};
 const FINISHED='Completed';
 
-/* ===== CONTAINER MEASUREMENT PRESETS (editable) =====
-   Keyed by "SIZE|LOAD". Emails auto-fill the matching preset based on the
-   ticket's Size + Load columns. Edit the strings below to tune what gets
-   sent — freeform text, one measurement per line works best. Anything you
-   type in the mail client after "Open in Mail" is still editable before send.
-   Fallback order: exact "SIZE|LOAD" -> "SIZE|*" -> "*|LOAD" -> generic.        */
-const MEASUREMENTS={
+/* ===== CONTAINER DIMENSIONS (editable via 📐 button) =====
+   Stored in localStorage under LS_DIMS, keyed by "SIZE|LOAD".
+   DEFAULT_DIMS below are seeded on first use — edit via the Dimensions
+   button in the header (or wipe LS_DIMS to reseed). Anything you enter
+   in the Gmail composer after opening is still editable before send.       */
+const LS_DIMS='wrs_dims_v1';
+const DEFAULT_DIMS={
   /* ---------- FRONT LOAD ---------- */
   '1 Yard|Front Load':          'Overall:  48"W x 30"D x 36"H\nGate opening:  46" x 22"\nApprox weight:  350 lb',
   '1.5 Yard|Front Load':        'Overall:  60"W x 36"D x 42"H\nGate opening:  58" x 28"\nApprox weight:  420 lb',
@@ -342,16 +358,31 @@ const MEASUREMENTS={
   '6 Yard|Rear Load':           'Overall:  72"W x 60"D x 68"H\nApprox weight:  920 lb',
   '8 Yard|Rear Load':           'Overall:  72"W x 66"D x 74"H\nApprox weight:  1,080 lb'
 };
+let DIMS=(function(){try{const v=localStorage.getItem(LS_DIMS);return v?JSON.parse(v):Object.assign({},DEFAULT_DIMS);}catch(e){return Object.assign({},DEFAULT_DIMS);}})();
+function saveDims(){try{localStorage.setItem(LS_DIMS,JSON.stringify(DIMS));}catch(e){}}
 function measurementsFor(size,load){
   if(!size)return '';
   const k=size+'|'+load;
-  if(MEASUREMENTS[k])return MEASUREMENTS[k];
-  // fallback: try to match on base size ignoring "Slant"/"Compactor Style"
+  if(DIMS[k])return DIMS[k];
   const base=size.replace(/\s+(Slant|Compactor Style)$/i,'').trim();
   const k2=base+'|'+load;
-  if(MEASUREMENTS[k2])return MEASUREMENTS[k2]+'\n(preset from base size — verify slant/compactor dims)';
+  if(DIMS[k2])return DIMS[k2]+'\n(preset from base size — verify slant/compactor dims)';
   return '';
 }
+/* ---- Dimensions manager modal ---- */
+function openDimsMgr(){
+  const sz=$('dm_sz'),ld=$('dm_ld');
+  if(!sz.options.length){sz.innerHTML=opt(CTYPES);ld.innerHTML=opt(LOADS);}
+  sz.onchange=ld.onchange=dmLoad;
+  dmLoad();
+  $('dimsModal').classList.add('open');
+}
+function closeDimsMgr(){$('dimsModal').classList.remove('open');}
+function dmKey(){return $('dm_sz').value+'|'+$('dm_ld').value;}
+function dmLoad(){const k=dmKey();$('dm_body').value=DIMS[k]||'';}
+function dmSave(){const k=dmKey();const v=$('dm_body').value.trim();if(v)DIMS[k]=v;else delete DIMS[k];saveDims();closeDimsMgr();}
+function dmResetOne(){const k=dmKey();if(DEFAULT_DIMS[k]!=null){DIMS[k]=DEFAULT_DIMS[k];saveDims();$('dm_body').value=DIMS[k];}else{delete DIMS[k];saveDims();$('dm_body').value='';}}
+function dmResetAll(){if(!confirm('Reset ALL container dimensions to defaults? This will overwrite every size + load preset.'))return;DIMS=Object.assign({},DEFAULT_DIMS);saveDims();dmLoad();}
 const ORDERS_HEAD=`<th>Ticket</th><th>Location</th><th class="gdiv">Status</th><th class="sch-cell">Schedule<small>placed / due</small></th><th class="gdiv">Qty</th><th>Build</th><th>Size</th><th>Load</th><th>Lids</th><th>Casters</th><th class="gdiv">Notes</th><th class="gdiv">QR</th><th></th>`;
 const STOCK_HEAD=`<th></th><th>Customer Location</th><th class="gdiv">Build</th><th>Size</th><th>Load</th><th>Lids</th><th>Casters</th><th class="gdiv">Qty</th><th>Notes</th><th class="gdiv">QR</th><th></th>`;
 const SVG_QR='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7M17 21h.01"/></svg>';
@@ -441,11 +472,12 @@ function setStage(id,ci,stage){const o=find(id);if(!o)return;const a=getProg(o);
 function togglePrio(id){const o=find(id);if(o){o.prio=!o.prio;renderOrders();markDirty(id);}}
 function delOrder(id){const o=find(id);if(!o)return;if(!confirm('Delete ticket '+(o.tid||id)+'?'))return;D=D.filter(x=>x.id!==id);expanded.delete(id);renderOrders();pushDelete('Orders',id);}
 function emailWO(id){const o=find(id);if(!o)return;const tk=o.tid||o.id;
-  const subj=`Container Work Order — ${o.loc||tk} (Ticket ${tk})`;
+  const subj=`Waste Recycling Services Steel Order For ${o.loc||tk}`;
   const meas=measurementsFor(o.sz,o.ld);
   const measBlock=meas?`\n--- Measurements (${o.sz} · ${o.ld}) ---\n${meas}\n`:'';
   const body=[`Ticket: ${tk}`,`Location: ${o.loc||''}`,o.addr?`Address: ${o.addr}`:'',o.ph?`Phone: ${o.ph}`:'',`Status: ${o.st}`,`Qty: ${o.qty}`,`Build: ${o.bd}`,`Container Size: ${o.sz}`,`Load Style: ${o.ld}`,`Lids: ${o.li}`,`Casters: ${o.ca}`,o.pl?`Order Placed: ${o.pl}`:'',o.du?`Projected Completion: ${o.du}`:'',measBlock,o.no?`Notes: ${o.no}`:''].filter(Boolean).join('\n');
-  window.location.href='mailto:'+CONFIG.EMAIL_TO+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);}
+  const url='https://mail.google.com/mail/?view=cm&fs=1&tf=1&to='+encodeURIComponent(CONFIG.EMAIL_TO)+'&su='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+  window.open(url,'_blank','noopener');}
 let pop=null;
 function openPop(e,id,field){e.stopPropagation();closePop();const map=field==='st'?STATUS:LOAD;pop=document.createElement('div');pop.className='pop';
   Object.keys(map).forEach(k=>{const b=document.createElement('button');b.innerHTML=`<span class="dot" style="background:${map[k].d}"></span>${k}`;b.onclick=()=>{const o=find(id);if(o)o[field]=k;closePop();renderOrders();markDirty(id);};pop.appendChild(b);});
@@ -606,7 +638,7 @@ function flushDirty(){const ids=[...dirty];dirty.clear();if(!ids.length)return;i
 function markDirtyS(id){if(!CONFIG.API_URL)return;dirtyS.add(id);setSync('saving');clearTimeout(flushTimerS);flushTimerS=setTimeout(flushDirtyS,700);}
 function flushDirtyS(){const ids=[...dirtyS];dirtyS.clear();if(!ids.length)return;ids.forEach(id=>{const o=findS(id);if(o)postAction({action:'upsert',tab:'Stock',order:rowFromStock(o)});});setSync('ok');}
 function pushDelete(tab,id){if(!CONFIG.API_URL)return;setSync('saving');postAction({action:'delete',tab,id}).then(()=>setSync('ok')).catch(()=>setSync('offline'));}
-function isEditingNow(){if($('formModal').classList.contains('open')||$('stockModal').classList.contains('open')||$('qrModal').classList.contains('open'))return true;const ae=document.activeElement;return !!ae&&['TEXTAREA','SELECT','INPUT'].includes(ae.tagName);}
+function isEditingNow(){if($('formModal').classList.contains('open')||$('stockModal').classList.contains('open')||$('qrModal').classList.contains('open')||$('dimsModal').classList.contains('open'))return true;const ae=document.activeElement;return !!ae&&['TEXTAREA','SELECT','INPUT'].includes(ae.tagName);}
 function loadRemote(force){
   if(!CONFIG.API_URL){setSync();renderView();return Promise.resolve();}
   if(!force&&(isEditingNow()||dirty.size))return Promise.resolve();
