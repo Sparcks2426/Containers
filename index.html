@@ -301,13 +301,11 @@ tbody tr.flash{animation:flash 2.2s ease}
     <div style="font-size:11.5px;color:var(--muted);margin-top:6px">Saved locally in this browser. This block is auto-inserted into the email when a ticket matches this Size + Load.</div>
 
     <label style="font-family:'Oswald';font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);display:block;margin:14px 0 6px">Cost breakdown (per container)</label>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-      <div class="fld"><label>Steel $</label><input type="number" min="0" step="0.01" id="dm_steel" placeholder="0.00" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;font-family:'Oswald';font-weight:700;font-size:14px;box-sizing:border-box" oninput="dmRecalc()"></div>
-      <div class="fld"><label>Labor $</label><input type="number" min="0" step="0.01" id="dm_labor" placeholder="0.00" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;font-family:'Oswald';font-weight:700;font-size:14px;box-sizing:border-box" oninput="dmRecalc()"></div>
-      <div class="fld"><label>Misc $</label><input type="number" min="0" step="0.01" id="dm_misc" placeholder="0.00" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;font-family:'Oswald';font-weight:700;font-size:14px;box-sizing:border-box" oninput="dmRecalc()"></div>
-      <div class="fld"><label>Total</label><div id="dm_total" style="padding:9px;border:1px solid var(--line);border-radius:7px;background:#f8fafc;font-family:'Oswald';font-weight:700;font-size:14px;color:var(--st-comp-t);text-align:right">$0.00</div></div>
+    <div id="dm_costGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px">
+      <div class="fld" style="min-width:180px"><label>Total (per container)</label><div id="dm_total" style="padding:10px;border:1px solid var(--line);border-radius:7px;background:#f8fafc;font-family:'Oswald';font-weight:700;font-size:16px;color:var(--st-comp-t);text-align:right">$0.00</div></div>
     </div>
-    <div style="font-size:11.5px;color:var(--muted);margin-top:6px">Costs also render as a bubble on the Dimensions modal per Size + Load, and are appended to the steel order email.</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:6px">Costs are stored per Size + Load and appended to the steel order email.</div>
   </div>
   <div class="mfoot"><button class="btn sec" onclick="closeDimsMgr()">Close</button><button class="btn primary" onclick="dmSave()">Save</button></div>
 </div></div>
@@ -370,11 +368,32 @@ const DEFAULT_DIMS={
 let DIMS=(function(){try{const v=localStorage.getItem(LS_DIMS);return v?JSON.parse(v):Object.assign({},DEFAULT_DIMS);}catch(e){return Object.assign({},DEFAULT_DIMS);}})();
 function saveDims(){try{localStorage.setItem(LS_DIMS,JSON.stringify(DIMS));}catch(e){}}
 
-/* ===== CONTAINER COSTS (steel / labor / misc, editable via 📐 button) =====
-   Stored in localStorage under LS_COSTS, keyed by "SIZE|LOAD" -> {s,l,m}. */
-const LS_COSTS='wrs_costs_v1';
+/* ===== CONTAINER COSTS (itemized, editable via 📐 button) =====
+   Stored in localStorage under LS_COSTS, keyed by "SIZE|LOAD" -> {key:amount,...}. */
+const LS_COSTS='wrs_costs_v2';
+const COST_FIELDS=[
+  {k:'s',  label:'Steel'},
+  {k:'l',  label:'Labor'},
+  {k:'ca', label:'Casters'},
+  {k:'li', label:'Lids'},
+  {k:'lh', label:'Lid Hinge'},
+  {k:'pg', label:'Pockets w/ Gussets'},
+  {k:'cp', label:'Caster Pads'},
+  {k:'pa', label:'Paint'},
+  {k:'ch', label:'3" Channel'},
+  {k:'cm', label:'Caster Pad Mounts'}
+];
 const DEFAULT_COSTS={};
-let COSTS=(function(){try{const v=localStorage.getItem(LS_COSTS);return v?JSON.parse(v):Object.assign({},DEFAULT_COSTS);}catch(e){return Object.assign({},DEFAULT_COSTS);}})();
+let COSTS=(function(){
+  try{
+    const v=localStorage.getItem(LS_COSTS);
+    if(v)return JSON.parse(v);
+    // one-time migration from v1 (s/l/m) — keep steel + labor, drop misc
+    const old=localStorage.getItem('wrs_costs_v1');
+    if(old){const o=JSON.parse(old),out={};Object.keys(o).forEach(k=>{const r=o[k]||{};out[k]={s:r.s||0,l:r.l||0};});return out;}
+    return Object.assign({},DEFAULT_COSTS);
+  }catch(e){return Object.assign({},DEFAULT_COSTS);}
+})();
 function saveCosts(){try{localStorage.setItem(LS_COSTS,JSON.stringify(COSTS));}catch(e){}}
 function costsFor(size,load){
   if(!size)return null;
@@ -385,12 +404,21 @@ function costsFor(size,load){
   if(COSTS[k2])return COSTS[k2];
   return null;
 }
+function costTotal(c){if(!c)return 0;let t=0;COST_FIELDS.forEach(f=>{t+=Number(c[f.k])||0;});return t;}
 function fmtUSD(n){n=Number(n)||0;return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function costBlockText(c){
   if(!c)return '';
-  const s=Number(c.s)||0,l=Number(c.l)||0,m=Number(c.m)||0,t=s+l+m;
-  if(!t)return '';
-  return `Steel:   ${fmtUSD(s)}\nLabor:   ${fmtUSD(l)}\nMisc:    ${fmtUSD(m)}\nTotal:   ${fmtUSD(t)}`;
+  const t=costTotal(c);if(!t)return '';
+  const lines=[];
+  COST_FIELDS.forEach(f=>{const v=Number(c[f.k])||0;if(v)lines.push(f.label.padEnd(22,' ')+fmtUSD(v));});
+  lines.push('-'.repeat(34));
+  lines.push('Total'.padEnd(22,' ')+fmtUSD(t));
+  return lines.join('\n');
+}
+function dmBuildCostGrid(){
+  const g=$('dm_costGrid');if(!g||g.dataset.built)return;
+  g.innerHTML=COST_FIELDS.map(f=>`<div class="fld"><label>${f.label} $</label><input type="number" min="0" step="0.01" id="dm_c_${f.k}" placeholder="0.00" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;font-family:'Oswald';font-weight:700;font-size:14px;box-sizing:border-box" oninput="dmRecalc()"></div>`).join('');
+  g.dataset.built='1';
 }
 function measurementsFor(size,load){
   if(!size)return '';
@@ -412,24 +440,23 @@ function openDimsMgr(){
 function closeDimsMgr(){$('dimsModal').classList.remove('open');}
 function dmKey(){return $('dm_sz').value+'|'+$('dm_ld').value;}
 function dmLoad(){
+  dmBuildCostGrid();
   const k=dmKey();
   $('dm_body').value=DIMS[k]||'';
   const c=COSTS[k]||{};
-  $('dm_steel').value=c.s!=null?c.s:'';
-  $('dm_labor').value=c.l!=null?c.l:'';
-  $('dm_misc').value =c.m!=null?c.m:'';
+  COST_FIELDS.forEach(f=>{const el=$('dm_c_'+f.k);if(el)el.value=(c[f.k]!=null&&c[f.k]!=='')?c[f.k]:'';});
   dmRecalc();
 }
 function dmRecalc(){
-  const s=parseFloat($('dm_steel').value)||0,l=parseFloat($('dm_labor').value)||0,m=parseFloat($('dm_misc').value)||0;
-  $('dm_total').textContent=fmtUSD(s+l+m);
+  let t=0;COST_FIELDS.forEach(f=>{const el=$('dm_c_'+f.k);if(el)t+=parseFloat(el.value)||0;});
+  $('dm_total').textContent=fmtUSD(t);
 }
 function dmSave(){
   const k=dmKey();
   const v=$('dm_body').value.trim();if(v)DIMS[k]=v;else delete DIMS[k];saveDims();
-  const s=parseFloat($('dm_steel').value),l=parseFloat($('dm_labor').value),m=parseFloat($('dm_misc').value);
-  const has=[s,l,m].some(x=>!isNaN(x)&&x>0);
-  if(has)COSTS[k]={s:isNaN(s)?0:s,l:isNaN(l)?0:l,m:isNaN(m)?0:m};else delete COSTS[k];
+  const obj={};let has=false;
+  COST_FIELDS.forEach(f=>{const el=$('dm_c_'+f.k);const n=el?parseFloat(el.value):NaN;if(!isNaN(n)&&n>0){obj[f.k]=n;has=true;}});
+  if(has)COSTS[k]=obj;else delete COSTS[k];
   saveCosts();
   closeDimsMgr();
 }
@@ -438,7 +465,8 @@ function dmResetOne(){
   if(DEFAULT_DIMS[k]!=null){DIMS[k]=DEFAULT_DIMS[k];saveDims();$('dm_body').value=DIMS[k];}
   else{delete DIMS[k];saveDims();$('dm_body').value='';}
   delete COSTS[k];saveCosts();
-  $('dm_steel').value='';$('dm_labor').value='';$('dm_misc').value='';dmRecalc();
+  COST_FIELDS.forEach(f=>{const el=$('dm_c_'+f.k);if(el)el.value='';});
+  dmRecalc();
 }
 function dmResetAll(){
   if(!confirm('Reset ALL container dimensions AND costs to defaults? This will overwrite every size + load preset.'))return;
