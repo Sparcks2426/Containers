@@ -299,6 +299,15 @@ tbody tr.flash{animation:flash 2.2s ease}
     <label style="font-family:'Oswald';font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px">Measurements (free text — one per line)</label>
     <textarea id="dm_body" style="width:100%;min-height:200px;font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:10px;border:1px solid var(--line);border-radius:8px;box-sizing:border-box" placeholder="Overall:  72&quot;W x 42&quot;D x 46&quot;H&#10;Gate opening:  70&quot; x 32&quot;&#10;Approx weight:  520 lb"></textarea>
     <div style="font-size:11.5px;color:var(--muted);margin-top:6px">Saved locally in this browser. This block is auto-inserted into the email when a ticket matches this Size + Load.</div>
+
+    <label style="font-family:'Oswald';font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);display:block;margin:14px 0 6px">Cost breakdown (per container)</label>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      <div class="fld"><label>Steel $</label><input type="number" min="0" step="0.01" id="dm_steel" placeholder="0.00" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;font-family:'Oswald';font-weight:700;font-size:14px;box-sizing:border-box" oninput="dmRecalc()"></div>
+      <div class="fld"><label>Labor $</label><input type="number" min="0" step="0.01" id="dm_labor" placeholder="0.00" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;font-family:'Oswald';font-weight:700;font-size:14px;box-sizing:border-box" oninput="dmRecalc()"></div>
+      <div class="fld"><label>Misc $</label><input type="number" min="0" step="0.01" id="dm_misc" placeholder="0.00" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;font-family:'Oswald';font-weight:700;font-size:14px;box-sizing:border-box" oninput="dmRecalc()"></div>
+      <div class="fld"><label>Total</label><div id="dm_total" style="padding:9px;border:1px solid var(--line);border-radius:7px;background:#f8fafc;font-family:'Oswald';font-weight:700;font-size:14px;color:var(--st-comp-t);text-align:right">$0.00</div></div>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:6px">Costs also render as a bubble on the Dimensions modal per Size + Load, and are appended to the steel order email.</div>
   </div>
   <div class="mfoot"><button class="btn sec" onclick="closeDimsMgr()">Close</button><button class="btn primary" onclick="dmSave()">Save</button></div>
 </div></div>
@@ -360,6 +369,29 @@ const DEFAULT_DIMS={
 };
 let DIMS=(function(){try{const v=localStorage.getItem(LS_DIMS);return v?JSON.parse(v):Object.assign({},DEFAULT_DIMS);}catch(e){return Object.assign({},DEFAULT_DIMS);}})();
 function saveDims(){try{localStorage.setItem(LS_DIMS,JSON.stringify(DIMS));}catch(e){}}
+
+/* ===== CONTAINER COSTS (steel / labor / misc, editable via 📐 button) =====
+   Stored in localStorage under LS_COSTS, keyed by "SIZE|LOAD" -> {s,l,m}. */
+const LS_COSTS='wrs_costs_v1';
+const DEFAULT_COSTS={};
+let COSTS=(function(){try{const v=localStorage.getItem(LS_COSTS);return v?JSON.parse(v):Object.assign({},DEFAULT_COSTS);}catch(e){return Object.assign({},DEFAULT_COSTS);}})();
+function saveCosts(){try{localStorage.setItem(LS_COSTS,JSON.stringify(COSTS));}catch(e){}}
+function costsFor(size,load){
+  if(!size)return null;
+  const k=size+'|'+load;
+  if(COSTS[k])return COSTS[k];
+  const base=size.replace(/\s+(Slant|Compactor Style)$/i,'').trim();
+  const k2=base+'|'+load;
+  if(COSTS[k2])return COSTS[k2];
+  return null;
+}
+function fmtUSD(n){n=Number(n)||0;return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function costBlockText(c){
+  if(!c)return '';
+  const s=Number(c.s)||0,l=Number(c.l)||0,m=Number(c.m)||0,t=s+l+m;
+  if(!t)return '';
+  return `Steel:   ${fmtUSD(s)}\nLabor:   ${fmtUSD(l)}\nMisc:    ${fmtUSD(m)}\nTotal:   ${fmtUSD(t)}`;
+}
 function measurementsFor(size,load){
   if(!size)return '';
   const k=size+'|'+load;
@@ -379,10 +411,41 @@ function openDimsMgr(){
 }
 function closeDimsMgr(){$('dimsModal').classList.remove('open');}
 function dmKey(){return $('dm_sz').value+'|'+$('dm_ld').value;}
-function dmLoad(){const k=dmKey();$('dm_body').value=DIMS[k]||'';}
-function dmSave(){const k=dmKey();const v=$('dm_body').value.trim();if(v)DIMS[k]=v;else delete DIMS[k];saveDims();closeDimsMgr();}
-function dmResetOne(){const k=dmKey();if(DEFAULT_DIMS[k]!=null){DIMS[k]=DEFAULT_DIMS[k];saveDims();$('dm_body').value=DIMS[k];}else{delete DIMS[k];saveDims();$('dm_body').value='';}}
-function dmResetAll(){if(!confirm('Reset ALL container dimensions to defaults? This will overwrite every size + load preset.'))return;DIMS=Object.assign({},DEFAULT_DIMS);saveDims();dmLoad();}
+function dmLoad(){
+  const k=dmKey();
+  $('dm_body').value=DIMS[k]||'';
+  const c=COSTS[k]||{};
+  $('dm_steel').value=c.s!=null?c.s:'';
+  $('dm_labor').value=c.l!=null?c.l:'';
+  $('dm_misc').value =c.m!=null?c.m:'';
+  dmRecalc();
+}
+function dmRecalc(){
+  const s=parseFloat($('dm_steel').value)||0,l=parseFloat($('dm_labor').value)||0,m=parseFloat($('dm_misc').value)||0;
+  $('dm_total').textContent=fmtUSD(s+l+m);
+}
+function dmSave(){
+  const k=dmKey();
+  const v=$('dm_body').value.trim();if(v)DIMS[k]=v;else delete DIMS[k];saveDims();
+  const s=parseFloat($('dm_steel').value),l=parseFloat($('dm_labor').value),m=parseFloat($('dm_misc').value);
+  const has=[s,l,m].some(x=>!isNaN(x)&&x>0);
+  if(has)COSTS[k]={s:isNaN(s)?0:s,l:isNaN(l)?0:l,m:isNaN(m)?0:m};else delete COSTS[k];
+  saveCosts();
+  closeDimsMgr();
+}
+function dmResetOne(){
+  const k=dmKey();
+  if(DEFAULT_DIMS[k]!=null){DIMS[k]=DEFAULT_DIMS[k];saveDims();$('dm_body').value=DIMS[k];}
+  else{delete DIMS[k];saveDims();$('dm_body').value='';}
+  delete COSTS[k];saveCosts();
+  $('dm_steel').value='';$('dm_labor').value='';$('dm_misc').value='';dmRecalc();
+}
+function dmResetAll(){
+  if(!confirm('Reset ALL container dimensions AND costs to defaults? This will overwrite every size + load preset.'))return;
+  DIMS=Object.assign({},DEFAULT_DIMS);saveDims();
+  COSTS=Object.assign({},DEFAULT_COSTS);saveCosts();
+  dmLoad();
+}
 const ORDERS_HEAD=`<th>Ticket</th><th>Location</th><th class="gdiv">Status</th><th class="sch-cell">Schedule<small>placed / due</small></th><th class="gdiv">Qty</th><th>Build</th><th>Size</th><th>Load</th><th>Lids</th><th>Casters</th><th class="gdiv">Notes</th><th class="gdiv">QR</th><th></th>`;
 const STOCK_HEAD=`<th></th><th>Customer Location</th><th class="gdiv">Build</th><th>Size</th><th>Load</th><th>Lids</th><th>Casters</th><th class="gdiv">Qty</th><th>Notes</th><th class="gdiv">QR</th><th></th>`;
 const SVG_QR='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-7M17 21h.01"/></svg>';
@@ -475,7 +538,17 @@ function emailWO(id){const o=find(id);if(!o)return;const tk=o.tid||o.id;
   const subj=`Waste Recycling Services Steel Order For ${o.loc||tk}`;
   const meas=measurementsFor(o.sz,o.ld);
   const measBlock=meas?`\n--- Measurements (${o.sz} · ${o.ld}) ---\n${meas}\n`:'';
-  const body=[`Ticket: ${tk}`,`Location: ${o.loc||''}`,o.pl?`Order Placed: ${o.pl}`:'',o.du?`Projected Completion: ${o.du}`:'',measBlock].filter(Boolean).join('\n');
+  const cst=costsFor(o.sz,o.ld);const cstTxt=costBlockText(cst);
+  const qty=Number(o.qty)||1;
+  let costBlock='';
+  if(cstTxt){
+    costBlock=`\n--- Cost Estimate (per container) ---\n${cstTxt}\n`;
+    if(qty>1){
+      const tot=((Number(cst.s)||0)+(Number(cst.l)||0)+(Number(cst.m)||0))*qty;
+      costBlock+=`Extended (× ${qty}):  ${fmtUSD(tot)}\n`;
+    }
+  }
+  const body=[`Ticket: ${tk}`,`Location: ${o.loc||''}`,o.pl?`Order Placed: ${o.pl}`:'',o.du?`Projected Completion: ${o.du}`:'',measBlock,costBlock].filter(Boolean).join('\n');
   const url='https://mail.google.com/mail/?view=cm&fs=1&tf=1&to='+encodeURIComponent(CONFIG.EMAIL_TO)+'&su='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
   window.open(url,'_blank','noopener');}
 let pop=null;
