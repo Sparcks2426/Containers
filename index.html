@@ -304,7 +304,7 @@ tbody tr.flash{animation:flash 2.2s ease}
       <label style="font-family:'Oswald';font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);flex:1">Cost breakdown (per container)</label>
       <div class="fld" style="min-width:150px"><label>Upcharge %</label><input type="number" min="0" step="0.1" id="dm_upch" value="30" style="width:100%;padding:9px;border:1px solid var(--amber);border-radius:7px;font-family:'Oswald';font-weight:700;font-size:14px;box-sizing:border-box;background:#fffbeb" oninput="dmUpchChange()"></div>
     </div>
-    <div id="dm_costGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"></div>
+    <div id="dm_costGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px"></div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px">
       <div class="fld"><label>Total Cost</label><div id="dm_totCost" style="padding:10px;border:1px solid var(--line);border-radius:7px;background:#f8fafc;font-family:'Oswald';font-weight:700;font-size:16px;text-align:right">$0.00</div></div>
       <div class="fld"><label>Total Sell</label><div id="dm_totSell" style="padding:10px;border:1px solid var(--line);border-radius:7px;background:#f8fafc;font-family:'Oswald';font-weight:700;font-size:16px;color:var(--st-comp-t);text-align:right">$0.00</div></div>
@@ -432,12 +432,15 @@ function costBlockText(c){
 }
 function dmBuildCostGrid(){
   const g=$('dm_costGrid');if(!g||g.dataset.built)return;
-  g.innerHTML=COST_FIELDS.map(f=>`<div class="fld" style="background:#fbfcfd;border:1px solid var(--line2);border-radius:8px;padding:8px 9px">
-    <label style="display:block">${f.label} $</label>
-    <input type="number" min="0" step="0.01" id="dm_c_${f.k}" placeholder="0.00" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;font-family:'Oswald';font-weight:700;font-size:14px;box-sizing:border-box;margin-top:2px" oninput="dmRecalc()">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;font-family:'Oswald';font-size:10.5px;letter-spacing:.4px;text-transform:uppercase">
-      <span style="color:var(--muted)">Sell</span>
-      <span id="dm_s_${f.k}" style="color:var(--st-comp-t);font-weight:700;font-size:12.5px">$0.00</span>
+  g.innerHTML=COST_FIELDS.map(f=>`<div style="background:#fbfcfd;border:1px solid var(--line2);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:10px">
+    <div style="font-family:'Oswald';font-weight:700;font-size:12.5px;letter-spacing:.3px;text-transform:uppercase;color:var(--steel);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.label}</div>
+    <div style="display:flex;align-items:center;gap:5px">
+      <span style="font-family:'Oswald';font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)">Cost</span>
+      <input type="number" min="0" step="0.01" id="dm_c_${f.k}" placeholder="0.00" style="width:78px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-family:'Oswald';font-weight:700;font-size:13px;box-sizing:border-box;text-align:right" oninput="dmRecalc()">
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;min-width:96px;justify-content:flex-end">
+      <span style="font-family:'Oswald';font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)">Sell</span>
+      <span id="dm_s_${f.k}" style="font-family:'Oswald';font-weight:700;font-size:13px;color:var(--st-comp-t);min-width:64px;text-align:right">$0.00</span>
     </div>
   </div>`).join('');
   g.dataset.built='1';
