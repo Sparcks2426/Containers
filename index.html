@@ -263,6 +263,7 @@ tbody tr.flash{animation:flash 2.2s ease}
   <div class="form">
     <div class="fld"><label>Ticket #</label><input id="f_id" placeholder="e.g. 32999"></div>
     <div class="fld"><label>Status</label><select id="f_st"></select></div>
+    <div class="fld"><label>Steel Status <span style="color:#dc2626">*</span></label><select id="f_ss"></select></div>
     <div class="fld full"><label>Location / Site</label><input id="f_loc" placeholder="Site name"></div>
     <div class="fld full"><label>Address</label><input id="f_addr" placeholder="Street, City, ST ZIP"></div>
     <div class="fld"><label>Phone</label><input id="f_ph" placeholder="(000) 000-0000"></div>
@@ -340,7 +341,9 @@ const stagesFor=o=>(o&&o.bd==='Rebuilt Container')?STAGES_REB:STAGES_NEW;
 const SHORT={'Core':'Core','Full Weld Core':'Full Weld','Pockets':'Pockets','Pads/Casters':'Pads/Cast','Paint':'Paint','Lids':'Lids','Removed Bottom':'Rem. Bottom','Installed Bottom - Sides':'Btm + Sides','Pads - Casters':'Pads/Cast'};
 const STATUS={'Pick Up':{c:'p-pick',d:'#b45309'},'New':{c:'p-new',d:'#1d4ed8'},'In-Progress':{c:'p-prog',d:'#6d28d9'},'Completed':{c:'p-comp',d:'#15803d'},'Ready for Delivery':{c:'p-ready',d:'#0e7490'}};
 const LOAD={'Front Load':{c:'p-front',d:'#0369a1'},'Rear Load':{c:'p-rear',d:'#9a3412'}};
-const STEEL={'No Steel Order Needed':{c:'p-ssnone',d:'#6b7280',short:'No Steel Needed'},'Steel Order Needed':{c:'p-ssneed',d:'#d97706',short:'Steel Needed'},'Steel Ordered':{c:'p-ssord',d:'#2563eb',short:'Steel Ordered'},'Steel Delivered':{c:'p-ssdel',d:'#16a34a',short:'Steel Delivered'}};
+const STEEL={'No Order Needed':{c:'p-ssnone',d:'#6b7280',short:'No Order Needed'},'Steel Needed':{c:'p-ssneed',d:'#d97706',short:'Steel Needed'},'Steel Ordered':{c:'p-ssord',d:'#2563eb',short:'Steel Ordered'},'Steel Delivered':{c:'p-ssdel',d:'#16a34a',short:'Steel Delivered'}};
+const STEEL_MIGRATE={'No Steel Order Needed':'No Order Needed','Steel Order Needed':'Steel Needed'};
+function migrateSs(v){if(!v)return '';return STEEL_MIGRATE[v]||v;}
 const FINISHED='Completed';
 
 /* ===== CONTAINER DIMENSIONS (editable via 📐 button) =====
@@ -715,7 +718,7 @@ function renderOrders(){
   list.forEach(o=>{
     const open=expanded.has(o.id),st=STATUS[o.st]||STATUS.New,lt=LOAD[o.ld]||LOAD['Front Load'];
     const zc=(z++%2)?' zebra':'';const over=o.du&&o.du<TODAY&&o.st!=='Completed';
-    const ss=o.ss||'No Steel Order Needed';const sstl=STEEL[ss]||STEEL['No Steel Order Needed'];
+    const ss=migrateSs(o.ss)||'No Order Needed';const sstl=STEEL[ss]||STEEL['No Order Needed'];
     h+=`<tr class="r${zc}${o.prio?' prio':''}" data-rowid="${o.id}">
       <td class="c-tkt"><div class="tktwrap"><span class="grip">⠿</span><span class="tkt${open?' open':''}" onclick="toggleExpand('${o.id}')">${esc(o.tid||o.id)}<span class="cv">${SVG_CARET}</span></span></div></td>
       <td class="loc" data-label="Location"><div class="nm">${esc(o.loc)}</div></td>
@@ -828,19 +831,20 @@ function stSaveForm(){
   closeStockForm();renderStock();markDirtyS(sid);}
 
 /* ===== New / Edit ORDER form ===== */
-function fillFormSelects(){if(formFilled)return;formFilled=true;$('f_st').innerHTML=opt(Object.keys(STATUS));$('f_bd').innerHTML=opt(BUILDS);$('f_sz').innerHTML=opt(CTYPES);$('f_ld').innerHTML=opt(LOADS);$('f_li').innerHTML=opt(LIDS);$('f_ca').innerHTML=opt(CASTERS);}
+function fillFormSelects(){if(formFilled)return;formFilled=true;$('f_st').innerHTML=opt(Object.keys(STATUS));$('f_ss').innerHTML='<option value="" disabled>— select steel status —</option>'+opt(Object.keys(STEEL));$('f_bd').innerHTML=opt(BUILDS);$('f_sz').innerHTML=opt(CTYPES);$('f_ld').innerHTML=opt(LOADS);$('f_li').innerHTML=opt(LIDS);$('f_ca').innerHTML=opt(CASTERS);}
 function openForm(id){fillFormSelects();editId=id||null;$('formTitle').textContent=id?'Edit Order':'New Order';
   const o=id?find(id):null;
   $('f_id').value=o?(o.tid||''):'';$('f_loc').value=o?o.loc:'';$('f_addr').value=o?(o.addr||''):'';$('f_ph').value=o?(o.ph||''):'';
   $('f_pl').value=o?(o.pl||''):'';$('f_du').value=o?(o.du||''):'';$('f_qty').value=o?o.qty:1;
-  $('f_st').value=o?o.st:'New';$('f_bd').value=o?o.bd:'New Container';$('f_sz').value=o?o.sz:'2 Yard';
+  $('f_st').value=o?o.st:'New';$('f_ss').value=o?(migrateSs(o.ss)||''):'';$('f_bd').value=o?o.bd:'New Container';$('f_sz').value=o?o.sz:'2 Yard';
   $('f_ld').value=o?o.ld:'Front Load';$('f_li').value=o?o.li:'None';$('f_ca').value=o?o.ca:'None';
   $('f_prio').checked=o?!!o.prio:false;$('f_no').value=o?o.no:'';
   $('formModal').classList.add('open');}
 function closeForm(){$('formModal').classList.remove('open');}
 function saveForm(){
   const loc=$('f_loc').value.trim();if(!loc){alert('Location / Site is required.');return;}
-  const data={tid:$('f_id').value.trim(),loc,addr:$('f_addr').value.trim(),ph:$('f_ph').value.trim(),st:$('f_st').value,pl:$('f_pl').value,du:$('f_du').value,qty:clampQty($('f_qty').value),bd:$('f_bd').value,sz:$('f_sz').value,ld:$('f_ld').value,li:$('f_li').value,ca:$('f_ca').value,prio:$('f_prio').checked,no:$('f_no').value};
+  const ss=$('f_ss').value;if(!ss||!STEEL[ss]){alert('Steel Status is required.');$('f_ss').focus();return;}
+  const data={tid:$('f_id').value.trim(),loc,addr:$('f_addr').value.trim(),ph:$('f_ph').value.trim(),st:$('f_st').value,ss,pl:$('f_pl').value,du:$('f_du').value,qty:clampQty($('f_qty').value),bd:$('f_bd').value,sz:$('f_sz').value,ld:$('f_ld').value,li:$('f_li').value,ca:$('f_ca').value,prio:$('f_prio').checked,no:$('f_no').value};
   let oid;
   if(editId){const o=find(editId);if(o){Object.assign(o,data);getProg(o);}oid=editId;}
   else{const o=Object.assign({id:uid(),createdAt:new Date().toISOString(),sort:D.length,pr:[]},data);getProg(o);D.push(o);expanded.add(o.id);oid=o.id;}
@@ -915,8 +919,8 @@ function setSync(s){const el=$('sync');if(!el)return;
   const v=m[s]||m.ok;el.textContent=v[0];el.style.color=v[1];}
 function parseProg(v){if(Array.isArray(v))return v.map(x=>x|0);if(v==null||v==='')return [];try{const a=JSON.parse(v);return Array.isArray(a)?a.map(x=>x|0):[];}catch(e){return [];}}
 function truthy(v){return v===true||v===1||v==='1'||String(v).toUpperCase()==='TRUE';}
-function orderFromRow(r){return{id:r.id||uid(),tid:String(r.ticketId==null?'':r.ticketId),st:r.status||'New',ss:r.steelStatus||'No Steel Order Needed',loc:r.siteName||'',addr:r.address||'',ph:r.phone==null?'':String(r.phone),bd:r.category||'New Container',ld:r.loadType||'Front Load',sz:r.containerType||'2 Yard',li:r.lids||'None',no:r.notes==null?'':String(r.notes),qty:clampQty(r.qty||1),ca:r.casters||'None',prio:truthy(r.priority),sort:(r.sort===''||r.sort==null)?0:(Number(r.sort)||0),pr:parseProg(r.progress),pl:dateStr(r.orderPlaced),du:dateStr(r.projectedDone),createdAt:r.createdAt||''};}
-function rowFromOrder(o){return{id:o.id,ticketId:o.tid||'',status:o.st||'New',steelStatus:o.ss||'No Steel Order Needed',siteName:o.loc||'',address:o.addr||'',phone:o.ph||'',category:o.bd||'New Container',loadType:o.ld||'Front Load',containerType:o.sz||'2 Yard',lids:o.li||'None',notes:o.no||'',createdAt:o.createdAt||'',updatedAt:'',qty:o.qty||1,casters:o.ca||'None',priority:o.prio?1:'',sort:(o.sort!=null?o.sort:0),progress:JSON.stringify(o.pr||[]),orderPlaced:o.pl||'',projectedDone:o.du||''};}
+function orderFromRow(r){return{id:r.id||uid(),tid:String(r.ticketId==null?'':r.ticketId),st:r.status||'New',ss:migrateSs(r.steelStatus)||'No Order Needed',loc:r.siteName||'',addr:r.address||'',ph:r.phone==null?'':String(r.phone),bd:r.category||'New Container',ld:r.loadType||'Front Load',sz:r.containerType||'2 Yard',li:r.lids||'None',no:r.notes==null?'':String(r.notes),qty:clampQty(r.qty||1),ca:r.casters||'None',prio:truthy(r.priority),sort:(r.sort===''||r.sort==null)?0:(Number(r.sort)||0),pr:parseProg(r.progress),pl:dateStr(r.orderPlaced),du:dateStr(r.projectedDone),createdAt:r.createdAt||''};}
+function rowFromOrder(o){return{id:o.id,ticketId:o.tid||'',status:o.st||'New',steelStatus:o.ss||'No Order Needed',siteName:o.loc||'',address:o.addr||'',phone:o.ph||'',category:o.bd||'New Container',loadType:o.ld||'Front Load',containerType:o.sz||'2 Yard',lids:o.li||'None',notes:o.no||'',createdAt:o.createdAt||'',updatedAt:'',qty:o.qty||1,casters:o.ca||'None',priority:o.prio?1:'',sort:(o.sort!=null?o.sort:0),progress:JSON.stringify(o.pr||[]),orderPlaced:o.pl||'',projectedDone:o.du||''};}
 function stockFromRow(r){return{id:r.id||uid(),loc:r.loc||'',bd:r.category||'New Container',sz:r.containerType||'2 Yard',ld:r.loadType||'Front Load',li:r.lids||'None',ca:r.casters||'None',qty:clampQty(r.qty||1),no:r.notes==null?'':String(r.notes),sort:(r.sort===''||r.sort==null)?0:(Number(r.sort)||0),pr:parseProg(r.progress),createdAt:r.createdAt||''};}
 function rowFromStock(o){return{id:o.id,loc:o.loc||'',category:o.bd||'New Container',containerType:o.sz||'2 Yard',loadType:o.ld||'Front Load',lids:o.li||'None',casters:o.ca||'None',qty:o.qty||1,notes:o.no||'',sort:(o.sort!=null?o.sort:0),progress:JSON.stringify(o.pr||[]),createdAt:o.createdAt||'',updatedAt:''};}
 function jsonp(url){return new Promise((res,rej)=>{
