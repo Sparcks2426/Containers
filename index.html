@@ -402,11 +402,20 @@ let COSTS=(function(){
 })();
 function saveCosts(){try{localStorage.setItem(LS_COSTS,JSON.stringify(COSTS));}catch(e){}}
 
+/* Parallel sell overrides (per size/load and per global). If missing for a key,
+   sell defaults to cost * upcharge (or cost, if the field is noUpch). */
+const LS_SELLS='wrs_sells_v1';
+let SELLS=(function(){try{const v=localStorage.getItem(LS_SELLS);return v?JSON.parse(v):{};}catch(e){return {};}})();
+function saveSells(){try{localStorage.setItem(LS_SELLS,JSON.stringify(SELLS));}catch(e){}}
+
 /* Global-eligible cost keys — one price used across every size/load */
 const GLOBAL_KEYS=new Set(['ca','lh','pg','cp','cm']);
 const LS_GCOSTS='wrs_costs_global_v1';
 let GCOSTS=(function(){try{const v=localStorage.getItem(LS_GCOSTS);return v?JSON.parse(v):{};}catch(e){return {};}})();
 function saveGCosts(){try{localStorage.setItem(LS_GCOSTS,JSON.stringify(GCOSTS));}catch(e){}}
+const LS_GSELLS='wrs_sells_global_v1';
+let GSELLS=(function(){try{const v=localStorage.getItem(LS_GSELLS);return v?JSON.parse(v):{};}catch(e){return {};}})();
+function saveGSells(){try{localStorage.setItem(LS_GSELLS,JSON.stringify(GSELLS));}catch(e){}}
 
 /* Global upcharge % (single value, applied to every line item + every size/load) */
 const LS_UPCH='wrs_upcharge_v1';
@@ -423,23 +432,36 @@ function costsFor(size,load){
     base=COSTS[b+'|'+load];
   }
   const out=Object.assign({},base||{});
-  // Globals override per-size for flagged keys
+  // Sell overrides (per-size)
+  let sellSrc=SELLS[k];
+  if(!sellSrc){const b=size.replace(/\s+(Slant|Compactor Style)$/i,'').trim();sellSrc=SELLS[b+'|'+load];}
+  out._sell=Object.assign({},sellSrc||{});
+  // Globals win for flagged cost keys AND their sell overrides
   Object.keys(GCOSTS).forEach(gk=>{if(GLOBAL_KEYS.has(gk)&&Number(GCOSTS[gk])>0)out[gk]=GCOSTS[gk];});
+  Object.keys(GSELLS).forEach(gk=>{if(GLOBAL_KEYS.has(gk)&&Number(GSELLS[gk])>0)out._sell[gk]=GSELLS[gk];});
   let any=false;COST_FIELDS.forEach(f=>{if(Number(out[f.k])>0)any=true;});
   return any?out:null;
 }
 function costTotal(c){if(!c)return 0;let t=0;COST_FIELDS.forEach(f=>{t+=Number(c[f.k])||0;});return t;}
-function sellOf(fkey,cost){const f=COST_FIELDS.find(x=>x.k===fkey);const v=Number(cost)||0;return (f&&f.noUpch)?v:v*upchMult();}
-function sellTotal(c){if(!c)return 0;let t=0;COST_FIELDS.forEach(f=>{t+=sellOf(f.k,c[f.k]);});return t;}
+function defaultSell(fkey,cost){const f=COST_FIELDS.find(x=>x.k===fkey);const v=Number(cost)||0;return (f&&f.noUpch)?v:v*upchMult();}
+function sellOf(fkey,cost,sellOverride){
+  const ov=Number(sellOverride);
+  if(!isNaN(ov)&&ov>0)return ov;
+  return defaultSell(fkey,cost);
+}
+function sellTotal(c){if(!c)return 0;let t=0;const so=c._sell||{};COST_FIELDS.forEach(f=>{t+=sellOf(f.k,c[f.k],so[f.k]);});return t;}
 function fmtUSD(n){n=Number(n)||0;return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function costBlockText(c,load){
   if(!c)return '';
   const tc=costTotal(c);if(!tc)return '';
-  const lines=[`(Upcharge ${UPCH}%   Labor not upcharged)`,'','Line item              Cost          Sell'];
+  const so=c._sell||{};
+  const lines=[`(Upcharge ${UPCH}%   Labor not upcharged   * = manual sell override)`,'','Line item              Cost          Sell'];
   COST_FIELDS.forEach(f=>{
     if(f.rearOnly&&!/rear/i.test(load||''))return;
     const v=Number(c[f.k])||0;if(!v)return;
-    lines.push(f.label.padEnd(22,' ')+fmtUSD(v).padEnd(14,' ')+fmtUSD(sellOf(f.k,v)));
+    const ov=Number(so[f.k]);const isOv=!isNaN(ov)&&ov>0;
+    const sellV=isOv?ov:defaultSell(f.k,v);
+    lines.push(f.label.padEnd(22,' ')+fmtUSD(v).padEnd(14,' ')+fmtUSD(sellV)+(isOv?' *':''));
   });
   const ts=sellTotal(c);
   lines.push('-'.repeat(50));
@@ -470,11 +492,11 @@ function dmBuildCostGrid(){
       <div style="font-family:'Oswald';font-weight:700;font-size:11.5px;letter-spacing:.3px;text-transform:uppercase;color:var(--steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center">${f.label}${badges}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
         <span style="font-family:'Oswald';font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)">Cost</span>
-        <input type="number" min="0" step="0.01" id="dm_c_${f.k}" placeholder="0.00" style="width:72px;padding:5px 7px;border:1px solid var(--line);border-radius:5px;font-family:'Oswald';font-weight:700;font-size:12.5px;box-sizing:border-box;text-align:right" oninput="dmRecalc()">
+        <input type="number" min="0" step="0.01" id="dm_c_${f.k}" placeholder="0.00" style="width:72px;padding:5px 7px;border:1px solid var(--line);border-radius:5px;font-family:'Oswald';font-weight:700;font-size:12.5px;box-sizing:border-box;text-align:right" oninput="dmCostChanged('${f.k}')">
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
         <span style="font-family:'Oswald';font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)">Sell</span>
-        <span id="dm_s_${f.k}" style="font-family:'Oswald';font-weight:700;font-size:12.5px;color:var(--st-comp-t);width:72px;text-align:right;box-sizing:border-box">$0.00</span>
+        <input type="number" min="0" step="0.01" id="dm_s_${f.k}" placeholder="0.00" style="width:72px;padding:5px 7px;border:1px solid #a7f3d0;border-radius:5px;font-family:'Oswald';font-weight:700;font-size:12.5px;color:var(--st-comp-t);background:#f0fdf4;box-sizing:border-box;text-align:right" oninput="dmSellChanged('${f.k}')">
       </div>
     </div>`;
   };
@@ -489,10 +511,6 @@ function dmBuildCostGrid(){
     section('Steel & Labor',groups.primary,'var(--steel)')
    +section('Global items (apply to every size + load)',groups.globals,'#b45309')
    +section('Per-size items',groups.other,'var(--muted)');
-}
-function dmUpchChange(){
-  const n=parseFloat($('dm_upch').value);
-  UPCH=isNaN(n)?0:n;saveUpch();dmRecalc();
 }
 function measurementsFor(size,load){
   if(!size)return '';
@@ -517,58 +535,97 @@ function dmLoad(){
   dmBuildCostGrid();
   const k=dmKey();
   $('dm_body').value=DIMS[k]||'';
-  const c=COSTS[k]||{};
+  const c=COSTS[k]||{}, s=SELLS[k]||{};
   COST_FIELDS.forEach(f=>{
-    const el=$('dm_c_'+f.k);if(!el)return;
+    const ec=$('dm_c_'+f.k),es=$('dm_s_'+f.k);if(!ec||!es)return;
     if(GLOBAL_KEYS.has(f.k)){
-      el.value=(GCOSTS[f.k]!=null&&GCOSTS[f.k]!=='')?GCOSTS[f.k]:'';
+      ec.value=(GCOSTS[f.k]!=null&&GCOSTS[f.k]!=='')?GCOSTS[f.k]:'';
+      const gv=GSELLS[f.k];
+      if(gv!=null&&gv!==''){es.value=gv;es.dataset.manual='1';}
+      else{es.value=ec.value?fmtNum(defaultSell(f.k,ec.value)):'';delete es.dataset.manual;}
     }else{
-      el.value=(c[f.k]!=null&&c[f.k]!=='')?c[f.k]:'';
+      ec.value=(c[f.k]!=null&&c[f.k]!=='')?c[f.k]:'';
+      const sv=s[f.k];
+      if(sv!=null&&sv!==''){es.value=sv;es.dataset.manual='1';}
+      else{es.value=ec.value?fmtNum(defaultSell(f.k,ec.value)):'';delete es.dataset.manual;}
     }
   });
   $('dm_upch').value=UPCH;
-  dmRecalc();
+  dmRecalcTotals();
 }
-function dmRecalc(){
+function fmtNum(n){n=Number(n)||0;return (Math.round(n*100)/100).toFixed(2);}
+function dmCostChanged(k){
+  const ec=$('dm_c_'+k),es=$('dm_s_'+k);if(!ec||!es)return;
+  if(!es.dataset.manual){es.value=ec.value?fmtNum(defaultSell(k,ec.value)):'';}
+  dmRecalcTotals();
+}
+function dmSellChanged(k){
+  const es=$('dm_s_'+k);if(!es)return;
+  if(es.value===''){delete es.dataset.manual;const ec=$('dm_c_'+k);if(ec&&ec.value)es.value=fmtNum(defaultSell(k,ec.value));}
+  else es.dataset.manual='1';
+  dmRecalcTotals();
+}
+function dmRecalcTotals(){
   let tc=0,ts=0;
   COST_FIELDS.forEach(f=>{
-    const el=$('dm_c_'+f.k);const v=el?(parseFloat(el.value)||0):0;
-    tc+=v;
-    const sv=sellOf(f.k,v);ts+=sv;
-    const s=$('dm_s_'+f.k);if(s)s.textContent=fmtUSD(sv);
+    const ec=$('dm_c_'+f.k),es=$('dm_s_'+f.k);
+    tc+=ec?(parseFloat(ec.value)||0):0;
+    ts+=es?(parseFloat(es.value)||0):0;
   });
   $('dm_totCost').textContent=fmtUSD(tc);
   $('dm_totSell').textContent=fmtUSD(ts);
   $('dm_totMar').textContent=fmtUSD(ts-tc);
 }
+function dmRecalc(){dmRecalcTotals();}
+function dmUpchChange(){
+  const n=parseFloat($('dm_upch').value);
+  UPCH=isNaN(n)?0:n;saveUpch();
+  // Recompute sell for any field the user hasn't overridden
+  COST_FIELDS.forEach(f=>{
+    const ec=$('dm_c_'+f.k),es=$('dm_s_'+f.k);if(!ec||!es)return;
+    if(!es.dataset.manual)es.value=ec.value?fmtNum(defaultSell(f.k,ec.value)):'';
+  });
+  dmRecalcTotals();
+}
 function dmSaveGlobals(){
   GLOBAL_KEYS.forEach(gk=>{
-    const el=$('dm_c_'+gk);const n=el?parseFloat(el.value):NaN;
-    if(!isNaN(n)&&n>0)GCOSTS[gk]=n;else delete GCOSTS[gk];
+    const ec=$('dm_c_'+gk),es=$('dm_s_'+gk);
+    const cn=ec?parseFloat(ec.value):NaN;
+    if(!isNaN(cn)&&cn>0)GCOSTS[gk]=cn;else delete GCOSTS[gk];
+    if(es&&es.dataset.manual){
+      const sn=parseFloat(es.value);
+      if(!isNaN(sn)&&sn>0)GSELLS[gk]=sn;else delete GSELLS[gk];
+    }else delete GSELLS[gk];
   });
-  saveGCosts();
-  // Strip these keys out of any per-size entries so globals win cleanly
+  saveGCosts();saveGSells();
   Object.keys(COSTS).forEach(k=>{GLOBAL_KEYS.forEach(gk=>{if(COSTS[k])delete COSTS[k][gk];});if(COSTS[k]&&Object.keys(COSTS[k]).length===0)delete COSTS[k];});
-  saveCosts();
+  Object.keys(SELLS).forEach(k=>{GLOBAL_KEYS.forEach(gk=>{if(SELLS[k])delete SELLS[k][gk];});if(SELLS[k]&&Object.keys(SELLS[k]).length===0)delete SELLS[k];});
+  saveCosts();saveSells();
   alert('Globals saved — applied to every Size + Load.');
 }
 function dmClearGlobals(){
   if(!confirm('Clear all global pricing (Casters, Lid Hinge, Pockets w/ Gussets, Caster Pads, Caster Pad Mounts)?'))return;
-  GCOSTS={};saveGCosts();
-  GLOBAL_KEYS.forEach(gk=>{const el=$('dm_c_'+gk);if(el)el.value='';});
-  dmRecalc();
+  GCOSTS={};GSELLS={};saveGCosts();saveGSells();
+  GLOBAL_KEYS.forEach(gk=>{const ec=$('dm_c_'+gk),es=$('dm_s_'+gk);if(ec)ec.value='';if(es){es.value='';delete es.dataset.manual;}});
+  dmRecalcTotals();
 }
 function dmSave(){
   const k=dmKey();
   const v=$('dm_body').value.trim();if(v)DIMS[k]=v;else delete DIMS[k];saveDims();
-  const obj={};let has=false;
+  const cObj={},sObj={};let hasC=false,hasS=false;
   COST_FIELDS.forEach(f=>{
     if(GLOBAL_KEYS.has(f.k))return; // globals handled by dmSaveGlobals
-    const el=$('dm_c_'+f.k);const n=el?parseFloat(el.value):NaN;
-    if(!isNaN(n)&&n>0){obj[f.k]=n;has=true;}
+    const ec=$('dm_c_'+f.k),es=$('dm_s_'+f.k);
+    const cn=ec?parseFloat(ec.value):NaN;
+    if(!isNaN(cn)&&cn>0){cObj[f.k]=cn;hasC=true;}
+    // Only persist sell if user manually overrode (else it'll auto-derive on load)
+    if(es&&es.dataset.manual){
+      const sn=parseFloat(es.value);
+      if(!isNaN(sn)&&sn>0){sObj[f.k]=sn;hasS=true;}
+    }
   });
-  if(has)COSTS[k]=obj;else delete COSTS[k];
-  saveCosts();
+  if(hasC)COSTS[k]=cObj;else delete COSTS[k];saveCosts();
+  if(hasS)SELLS[k]=sObj;else delete SELLS[k];saveSells();
   closeDimsMgr();
 }
 function dmResetOne(){}
