@@ -499,17 +499,17 @@ function dmBuildCostGrid(){
 
   const groupOf=f=>{
     if(f.k==='s'||f.k==='l')return 'primary';
-    if(GLOBAL_KEYS.has(f.k))return 'globals';
+    if(f.k==='ca'||f.k==='cp'||f.k==='cm')return 'globals1';
+    if(f.k==='lh'||f.k==='pg')return 'globals2';
     return 'other';
   };
-  const groups={primary:[],globals:[],other:[]};
+  const groups={primary:[],globals1:[],globals2:[],other:[]};
   COST_FIELDS.forEach(f=>{if(f.rearOnly&&!isRear)return;groups[groupOf(f)].push(f);});
 
   const card=(f)=>{
     const isG=GLOBAL_KEYS.has(f.k);
     const bg=isG?'#fffbeb':'#fbfcfd',bd=isG?'#fde68a':'var(--line2)';
-    const badges=(isG?`<span style="font-family:'Oswald';font-size:8px;font-weight:700;letter-spacing:.4px;background:var(--amber);color:#1c2128;padding:1px 4px;border-radius:3px;margin-left:4px">GLOBAL</span>`:'')
-                +(f.noUpch?`<span style="font-family:'Oswald';font-size:8px;font-weight:700;letter-spacing:.4px;background:#e2e8f0;color:#334155;padding:1px 4px;border-radius:3px;margin-left:3px">NO UPCH</span>`:'')
+    const badges=(f.noUpch?`<span style="font-family:'Oswald';font-size:8px;font-weight:700;letter-spacing:.4px;background:#e2e8f0;color:#334155;padding:1px 4px;border-radius:3px;margin-left:3px">NO UPCH</span>`:'')
                 +(f.rearOnly?`<span style="font-family:'Oswald';font-size:8px;font-weight:700;letter-spacing:.4px;background:#ffedd5;color:#9a3412;padding:1px 4px;border-radius:3px;margin-left:3px">REAR</span>`:'');
     const isMult=MULT_KEYS.has(f.k);
     const multSel=isMult?`<select id="dm_m_${f.k}" onchange="dmMultChanged('${f.k}')" style="flex-shrink:0;font-family:'Oswald';font-weight:700;font-size:11px;padding:1px 3px;border:1px solid var(--line);border-radius:4px;background:#fff">
@@ -517,7 +517,7 @@ function dmBuildCostGrid(){
     </select>`:'';
     return `<div style="background:${bg};border:1px solid ${bd};border-radius:8px;padding:8px 9px;display:flex;flex-direction:column;gap:5px;min-width:0">
       <div style="display:flex;align-items:center;gap:4px;min-width:0">
-        <span style="font-family:'Oswald';font-weight:700;font-size:11.5px;letter-spacing:.3px;text-transform:uppercase;color:var(--steel);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.label}${badges}</span>
+        <span style="font-family:'Oswald';font-weight:700;font-size:11.5px;letter-spacing:.3px;text-transform:uppercase;color:var(--steel);flex:1;min-width:0">${f.label}${badges}</span>
         ${multSel}
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
@@ -532,14 +532,15 @@ function dmBuildCostGrid(){
   };
   const section=(title,items,accent)=>items.length?`
     <div style="margin-top:6px">
-      <div style="font-family:'Oswald';font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:${accent||'var(--muted)'};margin:0 0 5px 2px">${title}</div>
-      <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px">${items.map(card).join('')}</div>
+      ${title?`<div style="font-family:'Oswald';font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:${accent||'var(--muted)'};margin:0 0 5px 2px">${title}</div>`:''}
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">${items.map(card).join('')}</div>
     </div>`:'';
 
   g.style.display='block';g.style.gridTemplateColumns='';g.style.gridAutoFlow='';g.style.gap='';
   g.innerHTML =
     section('Steel & Labor',groups.primary,'var(--steel)')
-   +section('Global items (apply to every size + load)',groups.globals,'#b45309')
+   +section('Global items (apply to every size + load)',groups.globals1,'#b45309')
+   +section('',groups.globals2,'#b45309')
    +section('Per-size items',groups.other,'var(--muted)');
 }
 function measurementsFor(size,load){
