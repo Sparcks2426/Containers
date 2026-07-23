@@ -417,6 +417,13 @@ const LS_GSELLS='wrs_sells_global_v1';
 let GSELLS=(function(){try{const v=localStorage.getItem(LS_GSELLS);return v?JSON.parse(v):{};}catch(e){return {};}})();
 function saveGSells(){try{localStorage.setItem(LS_GSELLS,JSON.stringify(GSELLS));}catch(e){}}
 
+/* Quantity multipliers (1-4) — per size/load, for items whose count varies by container size */
+const MULT_KEYS=new Set(['ca','li','pg','cp','cm']);
+const LS_MULTS='wrs_mults_v1';
+let MULTS=(function(){try{const v=localStorage.getItem(LS_MULTS);return v?JSON.parse(v):{};}catch(e){return {};}})();
+function saveMults(){try{localStorage.setItem(LS_MULTS,JSON.stringify(MULTS));}catch(e){}}
+function multFor(sizeLoad,fkey){if(!MULT_KEYS.has(fkey))return 1;const m=MULTS[sizeLoad];const n=m?Number(m[fkey]):1;return (n>=1&&n<=4)?n:1;}
+
 /* Global upcharge % (single value, applied to every line item + every size/load) */
 const LS_UPCH='wrs_upcharge_v1';
 let UPCH=(function(){try{const v=localStorage.getItem(LS_UPCH);const n=v==null?30:parseFloat(v);return isNaN(n)?30:n;}catch(e){return 30;}})();
@@ -436,37 +443,42 @@ function costsFor(size,load){
   let sellSrc=SELLS[k];
   if(!sellSrc){const b=size.replace(/\s+(Slant|Compactor Style)$/i,'').trim();sellSrc=SELLS[b+'|'+load];}
   out._sell=Object.assign({},sellSrc||{});
+  // Multipliers (per-size)
+  const mSrc=MULTS[k]||MULTS[size.replace(/\s+(Slant|Compactor Style)$/i,'').trim()+'|'+load]||{};
+  out._mult={};MULT_KEYS.forEach(mk=>{const v=Number(mSrc[mk]);out._mult[mk]=(v>=1&&v<=4)?v:1;});
   // Globals win for flagged cost keys AND their sell overrides
   Object.keys(GCOSTS).forEach(gk=>{if(GLOBAL_KEYS.has(gk)&&Number(GCOSTS[gk])>0)out[gk]=GCOSTS[gk];});
   Object.keys(GSELLS).forEach(gk=>{if(GLOBAL_KEYS.has(gk)&&Number(GSELLS[gk])>0)out._sell[gk]=GSELLS[gk];});
   let any=false;COST_FIELDS.forEach(f=>{if(Number(out[f.k])>0)any=true;});
   return any?out:null;
 }
-function costTotal(c){if(!c)return 0;let t=0;COST_FIELDS.forEach(f=>{t+=Number(c[f.k])||0;});return t;}
+function multOfC(c,k){if(!c||!c._mult)return 1;return Number(c._mult[k])||1;}
+function costTotal(c){if(!c)return 0;let t=0;COST_FIELDS.forEach(f=>{t+=(Number(c[f.k])||0)*multOfC(c,f.k);});return t;}
 function defaultSell(fkey,cost){const f=COST_FIELDS.find(x=>x.k===fkey);const v=Number(cost)||0;return (f&&f.noUpch)?v:v*upchMult();}
 function sellOf(fkey,cost,sellOverride){
   const ov=Number(sellOverride);
   if(!isNaN(ov)&&ov>0)return ov;
   return defaultSell(fkey,cost);
 }
-function sellTotal(c){if(!c)return 0;let t=0;const so=c._sell||{};COST_FIELDS.forEach(f=>{t+=sellOf(f.k,c[f.k],so[f.k]);});return t;}
+function sellTotal(c){if(!c)return 0;let t=0;const so=c._sell||{};COST_FIELDS.forEach(f=>{t+=sellOf(f.k,c[f.k],so[f.k])*multOfC(c,f.k);});return t;}
 function fmtUSD(n){n=Number(n)||0;return '$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function costBlockText(c,load){
   if(!c)return '';
   const tc=costTotal(c);if(!tc)return '';
   const so=c._sell||{};
-  const lines=[`(Upcharge ${UPCH}%   Labor not upcharged   * = manual sell override)`,'','Line item              Cost          Sell'];
+  const lines=[`(Upcharge ${UPCH}%   Labor not upcharged   * = manual sell override)`,'','Line item              Qty   Unit Cost     Unit Sell     Ext Cost      Ext Sell'];
   COST_FIELDS.forEach(f=>{
     if(f.rearOnly&&!/rear/i.test(load||''))return;
     const v=Number(c[f.k])||0;if(!v)return;
+    const q=multOfC(c,f.k);
     const ov=Number(so[f.k]);const isOv=!isNaN(ov)&&ov>0;
-    const sellV=isOv?ov:defaultSell(f.k,v);
-    lines.push(f.label.padEnd(22,' ')+fmtUSD(v).padEnd(14,' ')+fmtUSD(sellV)+(isOv?' *':''));
+    const sellU=isOv?ov:defaultSell(f.k,v);
+    lines.push(f.label.padEnd(22,' ')+String(q).padEnd(6,' ')+fmtUSD(v).padEnd(14,' ')+(fmtUSD(sellU)+(isOv?'*':'')).padEnd(14,' ')+fmtUSD(v*q).padEnd(14,' ')+fmtUSD(sellU*q));
   });
   const ts=sellTotal(c);
-  lines.push('-'.repeat(50));
-  lines.push('Total'.padEnd(22,' ')+fmtUSD(tc).padEnd(14,' ')+fmtUSD(ts));
-  lines.push('Margin'.padEnd(22,' ')+' '.repeat(14)+fmtUSD(ts-tc));
+  lines.push('-'.repeat(78));
+  lines.push('Total'.padEnd(22,' ')+' '.repeat(6)+' '.repeat(14)+' '.repeat(14)+fmtUSD(tc).padEnd(14,' ')+fmtUSD(ts));
+  lines.push('Margin'.padEnd(22,' ')+' '.repeat(6)+' '.repeat(14)+' '.repeat(14)+' '.repeat(14)+fmtUSD(ts-tc));
   return lines.join('\n');
 }
 function dmBuildCostGrid(){
@@ -488,8 +500,12 @@ function dmBuildCostGrid(){
     const badges=(isG?`<span style="font-family:'Oswald';font-size:8px;font-weight:700;letter-spacing:.4px;background:var(--amber);color:#1c2128;padding:1px 4px;border-radius:3px;margin-left:4px">GLOBAL</span>`:'')
                 +(f.noUpch?`<span style="font-family:'Oswald';font-size:8px;font-weight:700;letter-spacing:.4px;background:#e2e8f0;color:#334155;padding:1px 4px;border-radius:3px;margin-left:3px">NO UPCH</span>`:'')
                 +(f.rearOnly?`<span style="font-family:'Oswald';font-size:8px;font-weight:700;letter-spacing:.4px;background:#ffedd5;color:#9a3412;padding:1px 4px;border-radius:3px;margin-left:3px">REAR</span>`:'');
+    const isMult=MULT_KEYS.has(f.k);
+    const multSel=isMult?`<select id="dm_m_${f.k}" onchange="dmMultChanged('${f.k}')" style="margin-left:auto;font-family:'Oswald';font-weight:700;font-size:11px;padding:1px 4px;border:1px solid var(--line);border-radius:4px;background:#fff">
+      <option value="1">× 1</option><option value="2">× 2</option><option value="3">× 3</option><option value="4">× 4</option>
+    </select>`:'';
     return `<div style="background:${bg};border:1px solid ${bd};border-radius:8px;padding:8px 9px;display:flex;flex-direction:column;gap:5px;min-width:0">
-      <div style="font-family:'Oswald';font-weight:700;font-size:11.5px;letter-spacing:.3px;text-transform:uppercase;color:var(--steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center">${f.label}${badges}</div>
+      <div style="font-family:'Oswald';font-weight:700;font-size:11.5px;letter-spacing:.3px;text-transform:uppercase;color:var(--steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px">${f.label}${badges}${multSel}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
         <span style="font-family:'Oswald';font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)">Cost</span>
         <input type="number" min="0" step="0.01" id="dm_c_${f.k}" placeholder="0.00" style="width:72px;padding:5px 7px;border:1px solid var(--line);border-radius:5px;font-family:'Oswald';font-weight:700;font-size:12.5px;box-sizing:border-box;text-align:right" oninput="dmCostChanged('${f.k}')">
@@ -535,7 +551,7 @@ function dmLoad(){
   dmBuildCostGrid();
   const k=dmKey();
   $('dm_body').value=DIMS[k]||'';
-  const c=COSTS[k]||{}, s=SELLS[k]||{};
+  const c=COSTS[k]||{}, s=SELLS[k]||{}, m=MULTS[k]||{};
   COST_FIELDS.forEach(f=>{
     const ec=$('dm_c_'+f.k),es=$('dm_s_'+f.k);if(!ec||!es)return;
     if(GLOBAL_KEYS.has(f.k)){
@@ -549,10 +565,12 @@ function dmLoad(){
       if(sv!=null&&sv!==''){es.value=sv;es.dataset.manual='1';}
       else{es.value=ec.value?fmtNum(defaultSell(f.k,ec.value)):'';delete es.dataset.manual;}
     }
+    if(MULT_KEYS.has(f.k)){const sel=$('dm_m_'+f.k);if(sel){const n=Number(m[f.k]);sel.value=String((n>=1&&n<=4)?n:1);}}
   });
   $('dm_upch').value=UPCH;
   dmRecalcTotals();
 }
+function dmMultChanged(k){dmRecalcTotals();}
 function fmtNum(n){n=Number(n)||0;return (Math.round(n*100)/100).toFixed(2);}
 function dmCostChanged(k){
   const ec=$('dm_c_'+k),es=$('dm_s_'+k);if(!ec||!es)return;
@@ -569,8 +587,11 @@ function dmRecalcTotals(){
   let tc=0,ts=0;
   COST_FIELDS.forEach(f=>{
     const ec=$('dm_c_'+f.k),es=$('dm_s_'+f.k);
-    tc+=ec?(parseFloat(ec.value)||0):0;
-    ts+=es?(parseFloat(es.value)||0):0;
+    const c=ec?(parseFloat(ec.value)||0):0;
+    const s=es?(parseFloat(es.value)||0):0;
+    let q=1;
+    if(MULT_KEYS.has(f.k)){const sel=$('dm_m_'+f.k);if(sel){const n=parseInt(sel.value,10);if(n>=1&&n<=4)q=n;}}
+    tc+=c*q;ts+=s*q;
   });
   $('dm_totCost').textContent=fmtUSD(tc);
   $('dm_totSell').textContent=fmtUSD(ts);
@@ -612,20 +633,25 @@ function dmClearGlobals(){
 function dmSave(){
   const k=dmKey();
   const v=$('dm_body').value.trim();if(v)DIMS[k]=v;else delete DIMS[k];saveDims();
-  const cObj={},sObj={};let hasC=false,hasS=false;
+  const cObj={},sObj={},mObj={};let hasC=false,hasS=false,hasM=false;
   COST_FIELDS.forEach(f=>{
-    if(GLOBAL_KEYS.has(f.k))return; // globals handled by dmSaveGlobals
-    const ec=$('dm_c_'+f.k),es=$('dm_s_'+f.k);
-    const cn=ec?parseFloat(ec.value):NaN;
-    if(!isNaN(cn)&&cn>0){cObj[f.k]=cn;hasC=true;}
-    // Only persist sell if user manually overrode (else it'll auto-derive on load)
-    if(es&&es.dataset.manual){
-      const sn=parseFloat(es.value);
-      if(!isNaN(sn)&&sn>0){sObj[f.k]=sn;hasS=true;}
+    if(!GLOBAL_KEYS.has(f.k)){
+      const ec=$('dm_c_'+f.k),es=$('dm_s_'+f.k);
+      const cn=ec?parseFloat(ec.value):NaN;
+      if(!isNaN(cn)&&cn>0){cObj[f.k]=cn;hasC=true;}
+      if(es&&es.dataset.manual){
+        const sn=parseFloat(es.value);
+        if(!isNaN(sn)&&sn>0){sObj[f.k]=sn;hasS=true;}
+      }
+    }
+    if(MULT_KEYS.has(f.k)){
+      const sel=$('dm_m_'+f.k);const n=sel?parseInt(sel.value,10):1;
+      if(n>=2&&n<=4){mObj[f.k]=n;hasM=true;}
     }
   });
   if(hasC)COSTS[k]=cObj;else delete COSTS[k];saveCosts();
   if(hasS)SELLS[k]=sObj;else delete SELLS[k];saveSells();
+  if(hasM)MULTS[k]=mObj;else delete MULTS[k];saveMults();
   closeDimsMgr();
 }
 function dmResetOne(){}
