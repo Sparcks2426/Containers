@@ -69,6 +69,12 @@ tbody tr.prio{background:#fff5f5}
 .p-new{background:var(--st-new-b);color:var(--st-new-t)}.p-prog{background:var(--st-prog-b);color:var(--st-prog-t)}
 .p-pick{background:var(--st-pick-b);color:var(--st-pick-t)}.p-comp{background:var(--st-comp-b);color:var(--st-comp-t)}.p-ready{background:var(--st-ready-b);color:var(--st-ready-t)}
 .p-front{background:var(--lt-front-b);color:var(--lt-front-t)}.p-rear{background:var(--lt-rear-b);color:var(--lt-rear-t)}
+.p-ssnone{background:#e5e7eb;color:#374151}
+.p-ssneed{background:#fef3c7;color:#92400e}
+.p-ssord{background:#dbeafe;color:#1e40af}
+.p-ssdel{background:#dcfce7;color:#166534}
+.pill-stack{display:inline-flex;flex-direction:column;gap:4px;align-items:flex-start}
+.pill-stack .pill{padding:4px 9px;font-size:10px}
 /* schedule — aligned label+input grid */
 .sch-cell{min-width:158px}
 .sched{display:inline-grid;grid-template-columns:14px auto;align-items:center;gap:5px 8px;justify-items:start}
@@ -334,6 +340,7 @@ const stagesFor=o=>(o&&o.bd==='Rebuilt Container')?STAGES_REB:STAGES_NEW;
 const SHORT={'Core':'Core','Full Weld Core':'Full Weld','Pockets':'Pockets','Pads/Casters':'Pads/Cast','Paint':'Paint','Lids':'Lids','Removed Bottom':'Rem. Bottom','Installed Bottom - Sides':'Btm + Sides','Pads - Casters':'Pads/Cast'};
 const STATUS={'Pick Up':{c:'p-pick',d:'#b45309'},'New':{c:'p-new',d:'#1d4ed8'},'In-Progress':{c:'p-prog',d:'#6d28d9'},'Completed':{c:'p-comp',d:'#15803d'},'Ready for Delivery':{c:'p-ready',d:'#0e7490'}};
 const LOAD={'Front Load':{c:'p-front',d:'#0369a1'},'Rear Load':{c:'p-rear',d:'#9a3412'}};
+const STEEL={'No Steel Order Needed':{c:'p-ssnone',d:'#6b7280',short:'No Steel Needed'},'Steel Order Needed':{c:'p-ssneed',d:'#d97706',short:'Steel Needed'},'Steel Ordered':{c:'p-ssord',d:'#2563eb',short:'Steel Ordered'},'Steel Delivered':{c:'p-ssdel',d:'#16a34a',short:'Steel Delivered'}};
 const FINISHED='Completed';
 
 /* ===== CONTAINER DIMENSIONS (editable via 📐 button) =====
@@ -419,10 +426,11 @@ function saveGSells(){try{localStorage.setItem(LS_GSELLS,JSON.stringify(GSELLS))
 
 /* Quantity multipliers (1-4) — per size/load, for items whose count varies by container size */
 const MULT_KEYS=new Set(['ca','li','pg','cp','cm']);
+const MULT_DEFAULTS={ca:4, li:2, pg:2, cp:4, cm:4};
 const LS_MULTS='wrs_mults_v1';
 let MULTS=(function(){try{const v=localStorage.getItem(LS_MULTS);return v?JSON.parse(v):{};}catch(e){return {};}})();
 function saveMults(){try{localStorage.setItem(LS_MULTS,JSON.stringify(MULTS));}catch(e){}}
-function multFor(sizeLoad,fkey){if(!MULT_KEYS.has(fkey))return 1;const m=MULTS[sizeLoad];const n=m?Number(m[fkey]):1;return (n>=1&&n<=4)?n:1;}
+function multFor(sizeLoad,fkey){if(!MULT_KEYS.has(fkey))return 1;const m=MULTS[sizeLoad];const n=m?Number(m[fkey]):NaN;if(n>=1&&n<=4)return n;return MULT_DEFAULTS[fkey]||1;}
 
 /* Global upcharge % (single value, applied to every line item + every size/load) */
 const LS_UPCH='wrs_upcharge_v1';
@@ -445,7 +453,7 @@ function costsFor(size,load){
   out._sell=Object.assign({},sellSrc||{});
   // Multipliers (per-size)
   const mSrc=MULTS[k]||MULTS[size.replace(/\s+(Slant|Compactor Style)$/i,'').trim()+'|'+load]||{};
-  out._mult={};MULT_KEYS.forEach(mk=>{const v=Number(mSrc[mk]);out._mult[mk]=(v>=1&&v<=4)?v:1;});
+  out._mult={};MULT_KEYS.forEach(mk=>{const v=Number(mSrc[mk]);out._mult[mk]=(v>=1&&v<=4)?v:(MULT_DEFAULTS[mk]||1);});
   // Globals win for flagged cost keys AND their sell overrides
   Object.keys(GCOSTS).forEach(gk=>{if(GLOBAL_KEYS.has(gk)&&Number(GCOSTS[gk])>0)out[gk]=GCOSTS[gk];});
   Object.keys(GSELLS).forEach(gk=>{if(GLOBAL_KEYS.has(gk)&&Number(GSELLS[gk])>0)out._sell[gk]=GSELLS[gk];});
@@ -565,7 +573,7 @@ function dmLoad(){
       if(sv!=null&&sv!==''){es.value=sv;es.dataset.manual='1';}
       else{es.value=ec.value?fmtNum(defaultSell(f.k,ec.value)):'';delete es.dataset.manual;}
     }
-    if(MULT_KEYS.has(f.k)){const sel=$('dm_m_'+f.k);if(sel){const n=Number(m[f.k]);sel.value=String((n>=1&&n<=4)?n:1);}}
+    if(MULT_KEYS.has(f.k)){const sel=$('dm_m_'+f.k);if(sel){const n=Number(m[f.k]);sel.value=String((n>=1&&n<=4)?n:(MULT_DEFAULTS[f.k]||1));}}
   });
   $('dm_upch').value=UPCH;
   dmRecalcTotals();
@@ -645,8 +653,9 @@ function dmSave(){
       }
     }
     if(MULT_KEYS.has(f.k)){
-      const sel=$('dm_m_'+f.k);const n=sel?parseInt(sel.value,10):1;
-      if(n>=2&&n<=4){mObj[f.k]=n;hasM=true;}
+      const sel=$('dm_m_'+f.k);const n=sel?parseInt(sel.value,10):(MULT_DEFAULTS[f.k]||1);
+      const def=MULT_DEFAULTS[f.k]||1;
+      if(n>=1&&n<=4&&n!==def){mObj[f.k]=n;hasM=true;}
     }
   });
   if(hasC)COSTS[k]=cObj;else delete COSTS[k];saveCosts();
@@ -706,10 +715,14 @@ function renderOrders(){
   list.forEach(o=>{
     const open=expanded.has(o.id),st=STATUS[o.st]||STATUS.New,lt=LOAD[o.ld]||LOAD['Front Load'];
     const zc=(z++%2)?' zebra':'';const over=o.du&&o.du<TODAY&&o.st!=='Completed';
+    const ss=o.ss||'No Steel Order Needed';const sstl=STEEL[ss]||STEEL['No Steel Order Needed'];
     h+=`<tr class="r${zc}${o.prio?' prio':''}" data-rowid="${o.id}">
       <td class="c-tkt"><div class="tktwrap"><span class="grip">⠿</span><span class="tkt${open?' open':''}" onclick="toggleExpand('${o.id}')">${esc(o.tid||o.id)}<span class="cv">${SVG_CARET}</span></span></div></td>
       <td class="loc" data-label="Location"><div class="nm">${esc(o.loc)}</div></td>
-      <td class="gdiv" data-label="Status"><span class="pill ${st.c}" onclick="openPop(event,'${o.id}','st')">${o.st==='In-Progress'?'In-Prog':esc(o.st)}<span class="c">▼</span></span></td>
+      <td class="gdiv" data-label="Status"><div class="pill-stack">
+        <span class="pill ${st.c}" onclick="openPop(event,'${o.id}','st')">${o.st==='In-Progress'?'In-Prog':esc(o.st)}<span class="c">▼</span></span>
+        <span class="pill ${sstl.c}" onclick="openPop(event,'${o.id}','ss')">${sstl.short}<span class="c">▼</span></span>
+      </div></td>
       <td class="sch-cell" data-label="Schedule"><div class="sched">
         <span class="k">P</span><input type="date" value="${esc(o.pl)}" onchange="setField('${o.id}','pl',this.value)">
         <span class="k">D</span><input type="date" class="${over?'over':''}" value="${esc(o.du)}" onchange="setField('${o.id}','du',this.value)">
@@ -762,7 +775,7 @@ function emailWO(id){const o=find(id);if(!o)return;const tk=o.tid||o.id;
   const url='https://mail.google.com/mail/?view=cm&fs=1&tf=1&to='+encodeURIComponent(CONFIG.EMAIL_TO)+'&su='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
   window.open(url,'_blank','noopener');}
 let pop=null;
-function openPop(e,id,field){e.stopPropagation();closePop();const map=field==='st'?STATUS:LOAD;pop=document.createElement('div');pop.className='pop';
+function openPop(e,id,field){e.stopPropagation();closePop();const map=field==='st'?STATUS:(field==='ss'?STEEL:LOAD);pop=document.createElement('div');pop.className='pop';
   Object.keys(map).forEach(k=>{const b=document.createElement('button');b.innerHTML=`<span class="dot" style="background:${map[k].d}"></span>${k}`;b.onclick=()=>{const o=find(id);if(o)o[field]=k;closePop();renderOrders();markDirty(id);};pop.appendChild(b);});
   document.body.appendChild(pop);const r=e.currentTarget.getBoundingClientRect();pop.style.top=(r.bottom+5)+'px';pop.style.left=Math.min(r.left,innerWidth-pop.offsetWidth-12)+'px';}
 function closePop(){if(pop){pop.remove();pop=null;}}
@@ -902,8 +915,8 @@ function setSync(s){const el=$('sync');if(!el)return;
   const v=m[s]||m.ok;el.textContent=v[0];el.style.color=v[1];}
 function parseProg(v){if(Array.isArray(v))return v.map(x=>x|0);if(v==null||v==='')return [];try{const a=JSON.parse(v);return Array.isArray(a)?a.map(x=>x|0):[];}catch(e){return [];}}
 function truthy(v){return v===true||v===1||v==='1'||String(v).toUpperCase()==='TRUE';}
-function orderFromRow(r){return{id:r.id||uid(),tid:String(r.ticketId==null?'':r.ticketId),st:r.status||'New',loc:r.siteName||'',addr:r.address||'',ph:r.phone==null?'':String(r.phone),bd:r.category||'New Container',ld:r.loadType||'Front Load',sz:r.containerType||'2 Yard',li:r.lids||'None',no:r.notes==null?'':String(r.notes),qty:clampQty(r.qty||1),ca:r.casters||'None',prio:truthy(r.priority),sort:(r.sort===''||r.sort==null)?0:(Number(r.sort)||0),pr:parseProg(r.progress),pl:dateStr(r.orderPlaced),du:dateStr(r.projectedDone),createdAt:r.createdAt||''};}
-function rowFromOrder(o){return{id:o.id,ticketId:o.tid||'',status:o.st||'New',siteName:o.loc||'',address:o.addr||'',phone:o.ph||'',category:o.bd||'New Container',loadType:o.ld||'Front Load',containerType:o.sz||'2 Yard',lids:o.li||'None',notes:o.no||'',createdAt:o.createdAt||'',updatedAt:'',qty:o.qty||1,casters:o.ca||'None',priority:o.prio?1:'',sort:(o.sort!=null?o.sort:0),progress:JSON.stringify(o.pr||[]),orderPlaced:o.pl||'',projectedDone:o.du||''};}
+function orderFromRow(r){return{id:r.id||uid(),tid:String(r.ticketId==null?'':r.ticketId),st:r.status||'New',ss:r.steelStatus||'No Steel Order Needed',loc:r.siteName||'',addr:r.address||'',ph:r.phone==null?'':String(r.phone),bd:r.category||'New Container',ld:r.loadType||'Front Load',sz:r.containerType||'2 Yard',li:r.lids||'None',no:r.notes==null?'':String(r.notes),qty:clampQty(r.qty||1),ca:r.casters||'None',prio:truthy(r.priority),sort:(r.sort===''||r.sort==null)?0:(Number(r.sort)||0),pr:parseProg(r.progress),pl:dateStr(r.orderPlaced),du:dateStr(r.projectedDone),createdAt:r.createdAt||''};}
+function rowFromOrder(o){return{id:o.id,ticketId:o.tid||'',status:o.st||'New',steelStatus:o.ss||'No Steel Order Needed',siteName:o.loc||'',address:o.addr||'',phone:o.ph||'',category:o.bd||'New Container',loadType:o.ld||'Front Load',containerType:o.sz||'2 Yard',lids:o.li||'None',notes:o.no||'',createdAt:o.createdAt||'',updatedAt:'',qty:o.qty||1,casters:o.ca||'None',priority:o.prio?1:'',sort:(o.sort!=null?o.sort:0),progress:JSON.stringify(o.pr||[]),orderPlaced:o.pl||'',projectedDone:o.du||''};}
 function stockFromRow(r){return{id:r.id||uid(),loc:r.loc||'',bd:r.category||'New Container',sz:r.containerType||'2 Yard',ld:r.loadType||'Front Load',li:r.lids||'None',ca:r.casters||'None',qty:clampQty(r.qty||1),no:r.notes==null?'':String(r.notes),sort:(r.sort===''||r.sort==null)?0:(Number(r.sort)||0),pr:parseProg(r.progress),createdAt:r.createdAt||''};}
 function rowFromStock(o){return{id:o.id,loc:o.loc||'',category:o.bd||'New Container',containerType:o.sz||'2 Yard',loadType:o.ld||'Front Load',lids:o.li||'None',casters:o.ca||'None',qty:o.qty||1,notes:o.no||'',sort:(o.sort!=null?o.sort:0),progress:JSON.stringify(o.pr||[]),createdAt:o.createdAt||'',updatedAt:''};}
 function jsonp(url){return new Promise((res,rej)=>{
