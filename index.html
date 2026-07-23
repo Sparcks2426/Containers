@@ -512,11 +512,14 @@ function dmBuildCostGrid(){
                 +(f.noUpch?`<span style="font-family:'Oswald';font-size:8px;font-weight:700;letter-spacing:.4px;background:#e2e8f0;color:#334155;padding:1px 4px;border-radius:3px;margin-left:3px">NO UPCH</span>`:'')
                 +(f.rearOnly?`<span style="font-family:'Oswald';font-size:8px;font-weight:700;letter-spacing:.4px;background:#ffedd5;color:#9a3412;padding:1px 4px;border-radius:3px;margin-left:3px">REAR</span>`:'');
     const isMult=MULT_KEYS.has(f.k);
-    const multSel=isMult?`<select id="dm_m_${f.k}" onchange="dmMultChanged('${f.k}')" style="margin-left:auto;font-family:'Oswald';font-weight:700;font-size:11px;padding:1px 4px;border:1px solid var(--line);border-radius:4px;background:#fff">
+    const multSel=isMult?`<select id="dm_m_${f.k}" onchange="dmMultChanged('${f.k}')" style="flex-shrink:0;font-family:'Oswald';font-weight:700;font-size:11px;padding:1px 3px;border:1px solid var(--line);border-radius:4px;background:#fff">
       <option value="1">× 1</option><option value="2">× 2</option><option value="3">× 3</option><option value="4">× 4</option>
     </select>`:'';
     return `<div style="background:${bg};border:1px solid ${bd};border-radius:8px;padding:8px 9px;display:flex;flex-direction:column;gap:5px;min-width:0">
-      <div style="font-family:'Oswald';font-weight:700;font-size:11.5px;letter-spacing:.3px;text-transform:uppercase;color:var(--steel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px">${f.label}${badges}${multSel}</div>
+      <div style="display:flex;align-items:center;gap:4px;min-width:0">
+        <span style="font-family:'Oswald';font-weight:700;font-size:11.5px;letter-spacing:.3px;text-transform:uppercase;color:var(--steel);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.label}${badges}</span>
+        ${multSel}
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
         <span style="font-family:'Oswald';font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)">Cost</span>
         <input type="number" min="0" step="0.01" id="dm_c_${f.k}" placeholder="0.00" style="width:72px;padding:5px 7px;border:1px solid var(--line);border-radius:5px;font-family:'Oswald';font-weight:700;font-size:12.5px;box-sizing:border-box;text-align:right" oninput="dmCostChanged('${f.k}')">
